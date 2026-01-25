@@ -1,0 +1,147 @@
+# ============================================
+# PYTHON
+# ============================================
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ============================================
+# DJANGO
+# ============================================
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static_root/
+
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+.env
+.env.local
+.env.*.local
+*.env
+
+# ============================================
+# VIRTUAL ENVIRONMENT
+# ============================================
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# ============================================
+# IDE / EDITOR
+# ============================================
+# PyCharm
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# OS FILES
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ============================================
+# TESTING
+# ============================================
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# ============================================
+# JUPYTER NOTEBOOK
+# ============================================
+.ipynb_checkpoints
+
+# ============================================
+# CELERY
+# ============================================
+celerybeat-schedule
+celerybeat.pid
+
+# ============================================
+# MIGRATIONS (optional - zavisno od strategije)
+# ============================================
+# Ako želite da ignorišete sve migracije osim __init__.py:
+# **/migrations/*
+# !**/migrations/__init__.py
+
+# ============================================
+# BACKUP FILES
+# ============================================
+*.bak
+*.swp
+*.swo
+*~
+
+# ============================================
+# SENSITIVE DATA
+# ============================================
+# Secret keys, API keys, credentials
+secrets.json
+credentials.json
+*.pem
+*.key
+
+# ============================================
+# NODE MODULES (ako koristite npm/yarn)
+# ============================================
+node_modules/
+package-lock.json
+yarn.lock
+
+# ============================================
+# COMPILED STATIC FILES
+# ============================================
+*.sass-cache/
+*.css.map
+*.js.map

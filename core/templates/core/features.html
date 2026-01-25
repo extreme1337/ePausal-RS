@@ -1,0 +1,197 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Funkcionalnosti - ePauša RS{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="bg-gradient-to-br from-blue-50 to-purple-50 py-20">
+    <div class="max-w-7xl mx-auto px-6 text-center">
+        <h1 class="text-5xl font-bold mb-4">Sve funkcionalnosti ePauša RS</h1>
+        <p class="text-xl text-gray-600">Kompletan sistem za evidenciju paušalnog poreza</p>
+    </div>
+</div>
+
+<!-- Features Sections -->
+<div class="max-w-7xl mx-auto px-6 py-16">
+    
+    <!-- 1. Dashboard & Analytics -->
+    <div class="grid md:grid-cols-2 gap-12 items-center mb-20">
+        <div>
+            <div class="inline-block px-4 py-2 bg-blue-100 text-blue-600 rounded-full text-sm font-bold mb-4">
+                📊 ANALYTICS
+            </div>
+            <h2 class="text-3xl font-bold mb-4">Dashboard sa real-time graficima</h2>
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Chart.js grafici</strong> - Vizualizacija prihoda, poreza i neto zarade</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>AI predikcije</strong> - Machine learning predviđa buduće prihode</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>KPI praćenje</strong> - Conversion rate, top klijenti, sezonalnost</span>
+                </li>
+            </ul>
+        </div>
+        <div class="bg-white rounded-xl shadow-2xl p-4">
+            <img src="https://via.placeholder.com/600x400?text=Dashboard+Screenshot" alt="Dashboard" class="rounded-lg">
+        </div>
+    </div>
+    
+    <!-- 2. Fakture -->
+    <div class="grid md:grid-cols-2 gap-12 items-center mb-20">
+        <div class="order-2 md:order-1 bg-white rounded-xl shadow-2xl p-4">
+            <img src="https://via.placeholder.com/600x400?text=Faktura+Screenshot" alt="Faktura" class="rounded-lg">
+        </div>
+        <div class="order-1 md:order-2">
+            <div class="inline-block px-4 py-2 bg-green-100 text-green-600 rounded-full text-sm font-bold mb-4">
+                📄 DOKUMENTI
+            </div>
+            <h2 class="text-3xl font-bold mb-4">Profesionalne fakture</h2>
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Word format</strong> - Kompatibilno sa Microsoft Word i LibreOffice</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Automatsko popunjavanje</strong> - JIB, račun, podaci o klijentu</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Download postojećih</strong> - Sve fakture dostupne za ponovno preuzimanje</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- 3. Uplatnice -->
+    <div class="grid md:grid-cols-2 gap-12 items-center mb-20">
+        <div>
+            <div class="inline-block px-4 py-2 bg-purple-100 text-purple-600 rounded-full text-sm font-bold mb-4">
+                💳 PLAĆANJA
+            </div>
+            <h2 class="text-3xl font-bold mb-4">Uplatnice - RS format</h2>
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>PNG format</strong> - Tačan nalog za uplate Republike Srpske</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Auto-fill podataka</strong> - Računi PURS-a i FZO RS automatski</span>
+                </li>
+                <li class="flex items-start gap-3">
+                    <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                    <span><strong>Spremno za štampu</strong> - Direktno u banku ili online banking</span>
+                </li>
+            </ul>
+        </div>
+        <div class="bg-white rounded-xl shadow-2xl p-4">
+            <img src="https://via.placeholder.com/600x400?text=Uplatnica+Screenshot" alt="Uplatnica" class="rounded-lg">
+        </div>
+    </div>
+    
+    <!-- All Features List -->
+    <div class="bg-white rounded-xl shadow-lg p-12">
+        <h2 class="text-3xl font-bold text-center mb-12">Kompletan pregled funkcionalnosti</h2>
+        
+        <div class="grid md:grid-cols-3 gap-8">
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-blue-600">📊 Evidencija</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Prihodi po mjesecima</li>
+                    <li>✓ Rashodi (porez + doprinosi)</li>
+                    <li>✓ Neto zarada</li>
+                    <li>✓ Tabele sa exportom</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-green-600">📄 Dokumenti</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Fakture (Word)</li>
+                    <li>✓ Uplatnice (PNG)</li>
+                    <li>✓ Bilans uspjeha (CSV)</li>
+                    <li>✓ Godišnji izvještaj (PDF)</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-purple-600">🤖 AI Features</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Email inbox parsing</li>
+                    <li>✓ OCR za PDF fakture</li>
+                    <li>✓ Predikcija prihoda</li>
+                    <li>✓ Business preporuke</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-orange-600">📧 Automatizacija</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Email podsjetnici</li>
+                    <li>✓ Zakazana plaćanja</li>
+                    <li>✓ Automatski backup</li>
+                    <li>✓ Cron job taskovi</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-red-600">📅 Organizacija</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Kalendar view</li>
+                    <li>✓ Rokovi plaćanja</li>
+                    <li>✓ Event management</li>
+                    <li>✓ Podsjetnici</li>
+                </ul>
+            </div>
+            
+            <div>
+                <h3 class="font-bold text-lg mb-4 text-yellow-600">🌍 Multi-feature</h3>
+                <ul class="space-y-2 text-sm">
+                    <li>✓ Multi-language (SR/EN)</li>
+                    <li>✓ Multi-currency support</li>
+                    <li>✓ Dark mode</li>
+                    <li>✓ Export svih podataka</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FAQ -->
+<div class="bg-gray-50 py-20">
+    <div class="max-w-4xl mx-auto px-6">
+        <h2 class="text-3xl font-bold text-center mb-12">Često postavljana pitanja</h2>
+        
+        <div class="space-y-4">
+            <div class="bg-white rounded-lg p-6 shadow">
+                <h3 class="font-bold mb-2">Šta je paušalno oporezivanje?</h3>
+                <p class="text-gray-600">Paušalno oporezivanje je sistem gdje plaćate fiksnu stopu poreza (2% u RS) na ostvareni prihod, umjesto složenog obračuna.</p>
+            </div>
+            
+            <div class="bg-white rounded-lg p-6 shadow">
+                <h3 class="font-bold mb-2">Da li mogu da otkažem trial?</h3>
+                <p class="text-gray-600">Da! Trial možete otkazati bilo kada u prvih 14 dana i neće vam biti naplaćeno ništa.</p>
+            </div>
+            
+            <div class="bg-white rounded-lg p-6 shadow">
+                <h3 class="font-bold mb-2">Koliko dugo se čuvaju dokumenti?</h3>
+                <p class="text-gray-600">Zavisi od plana: Starter 30 dana, Professional 90 dana, Business 180 dana, Enterprise 365 dana.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Final CTA -->
+<div class="bg-white py-16 text-center">
+    <h2 class="text-3xl font-bold mb-4">Spremni za početak?</h2>
+    <a href="{% url 'register_choose_plan' %}" class="px-12 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold hover:shadow-xl transition inline-block">
+        Započni 14-dnevni trial →
+    </a>
+</div>
+{% endblock %}

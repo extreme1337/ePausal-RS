@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ePauša RS{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="bg-gray-50">
+    {% if user.is_authenticated and not request.path == '/login/' %}
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-8">
+                    <h1 class="text-2xl font-bold text-blue-600">ePauša RS</h1>
+                    {% if not user.is_staff %}
+                    <div class="flex gap-4">
+                        <a href="{% url 'dashboard' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-chart-line mr-1"></i>Dashboard
+                        </a>
+                        <a href="{% url 'prihodi' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-coins mr-1"></i>Prihodi
+                        </a>
+                        {% if user.korisnik.plan == 'Professional' or user.korisnik.plan == 'Business' or user.korisnik.plan == 'Enterprise' %}
+                        <a href="{% url 'inbox' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-envelope mr-1"></i>Inbox
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'fakture' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-file-invoice mr-1"></i>Fakture
+                        </a>
+                        <a href="{% url 'uplatnice' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-money-check mr-1"></i>Uplatnice
+                        </a>
+                        {% if user.korisnik.plan == 'Business' or user.korisnik.plan == 'Enterprise' %}
+                        <a href="{% url 'bilans' %}" class="text-gray-700 hover:text-blue-600 transition">
+                            <i class="fas fa-chart-bar mr-1"></i>Bilans
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-4">
+                    {% if not user.is_staff %}
+                    <span class="text-sm text-gray-600">{{ user.korisnik.ime }} ({{ user.korisnik.plan }})</span>
+                    {% else %}
+                    <span class="text-sm text-red-600 font-semibold">
+                        <i class="fas fa-user-shield mr-1"></i>Admin Panel
+                    </span>
+                    {% endif %}
+                    <a href="{% url 'logout' %}" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
+                        <i class="fas fa-sign-out-alt mr-1"></i>Odjava
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="fixed bottom-4 right-4 z-50">
+        {% for message in messages %}
+        <div class="mb-2 px-6 py-3 rounded-lg shadow-lg {% if message.tags == 'success' %}bg-green-500{% elif message.tags == 'error' %}bg-red-500{% else %}bg-blue-500{% endif %} text-white animate-fade-in">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

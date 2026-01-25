@@ -1,0 +1,117 @@
+{% extends 'core/base.html' %}
+{% block title %}Registracija{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12">
+    <div class="max-w-2xl mx-auto px-6">
+        <!-- Steps -->
+        <div class="flex justify-center mb-8">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                        <i class="fas fa-check"></i>
+                    </div>
+                    <span class="text-sm">Plan odabran</span>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">2</div>
+                    <span class="font-semibold">Osnovni podaci</span>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center">3</div>
+                    <span class="text-gray-600">Plaćanje</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-xl p-8">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold mb-2">Kreirajte nalog</h1>
+                <p class="text-gray-600">Plan: <span class="font-bold text-blue-600">{{ selected_plan }}</span></p>
+                <p class="text-sm text-green-600 mt-2">
+                    <i class="fas fa-gift mr-1"></i>14 dana besplatno trial
+                </p>
+            </div>
+            
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                <input type="hidden" name="plan" value="{{ selected_plan }}">
+                
+                <!-- Lični podaci -->
+                <div class="border-b pb-6">
+                    <h3 class="font-bold text-lg mb-4">👤 Lični podaci</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Ime i prezime *</label>
+                            <input type="text" name="ime" required
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Email *</label>
+                            <input type="email" name="email" required
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Lozinka *</label>
+                            <input type="password" name="password" required minlength="8"
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Potvrdi lozinku *</label>
+                            <input type="password" name="password_confirm" required
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Poslovni podaci -->
+                <div class="border-b pb-6">
+                    <h3 class="font-bold text-lg mb-4">🏢 Poslovni podaci</h3>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">JIB (13 cifara) *</label>
+                            <input type="text" name="jib" required pattern="\d{13}" maxlength="13"
+                                   placeholder="4512358270004"
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Jedinstveni identifikacioni broj</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Broj računa *</label>
+                            <input type="text" name="racun" required pattern="\d{3}-\d{3}-\d{11}-\d{2}"
+                                   placeholder="562-008-81727093-98"
+                                   class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-500 mt-1">Format: XXX-XXX-XXXXXXXXXXX-XX</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Terms -->
+                <div>
+                    <label class="flex items-start gap-3 cursor-pointer">
+                        <input type="checkbox" name="terms" required class="mt-1">
+                        <span class="text-sm text-gray-700">
+                            Slažem se sa <a href="#" class="text-blue-600 hover:underline">Uslovima korištenja</a> 
+                            i <a href="#" class="text-blue-600 hover:underline">Politikom privatnosti</a> *
+                        </span>
+                    </label>
+                </div>
+                
+                <!-- Submit -->
+                <div class="flex gap-4">
+                    <a href="{% url 'register_choose_plan' %}" class="flex-1 text-center py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition">
+                        ← Nazad
+                    </a>
+                    <button type="submit" class="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold hover:shadow-xl transition">
+                        Nastavi na plaćanje →
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <p class="text-center text-sm text-gray-600 mt-6">
+            Već imate nalog? <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Prijavite se</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

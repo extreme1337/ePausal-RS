@@ -1,0 +1,111 @@
+{% extends 'core/base.html' %}
+{% block title %}Admin Panel{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 class="text-3xl font-bold">Admin Portal</h1>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md mb-6">
+        <div class="flex border-b">
+            <a href="?tab=users" class="px-6 py-3 {% if active_tab == 'users' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
+                Korisnici ({{ korisnici.count }})
+            </a>
+            <a href="?tab=logs" class="px-6 py-3 {% if active_tab == 'logs' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
+                Logs
+            </a>
+            <a href="?tab=errors" class="px-6 py-3 {% if active_tab == 'errors' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
+                Errors ({{ failed_requests.count }})
+            </a>
+        </div>
+    </div>
+
+    {% if active_tab == 'users' %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <table class="w-full">
+            <thead class="bg-gray-100">
+                <tr>
+                    <th class="px-4 py-2 text-left">Ime</th>
+                    <th class="px-4 py-2 text-left">Email</th>
+                    <th class="px-4 py-2 text-left">Plan</th>
+                    <th class="px-4 py-2 text-left">Akcije</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for korisnik in korisnici %}
+                <tr class="border-t">
+                    <td class="px-4 py-3">{{ korisnik.ime }}</td>
+                    <td class="px-4 py-3">{{ korisnik.user.email }}</td>
+                    <td class="px-4 py-3">{{ korisnik.plan }}</td>
+                    <td class="px-4 py-3">
+                        <a href="{% url 'admin_login_as' korisnik.user.id %}" class="px-3 py-1 bg-blue-600 text-white rounded">
+                            Login
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    
+    {% if active_tab == 'logs' %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl mb-4">System Logs</h2>
+        {% for log in logs %}
+        <div class="p-3 bg-gray-50 rounded mb-2 text-sm">
+            {{ log.timestamp|date:"d.m.Y H:i" }} - {{ log.user.email }} - {{ log.action }} - {{ log.status }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if active_tab == 'errors' %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl mb-4">Failed Requests</h2>
+        {% for req in failed_requests %}
+        <div class="border rounded p-4 bg-red-50 mb-3">
+            <p class="font-semibold">{{ req.action }}</p>
+            <p class="text-sm text-red-600">{{ req.error }}</p>
+            <div class="flex gap-2 mt-2">
+                {% if req.retryable %}
+                <button onclick="retryRequest({{ req.id }})" class="px-3 py-1 bg-blue-600 text-white rounded text-sm">
+                    Retry
+                </button>
+                {% endif %}
+                <button onclick="skipRequest({{ req.id }})" class="px-3 py-1 bg-gray-600 text-white rounded text-sm">
+                    Skip
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+<script>
+async function retryRequest(id) {
+    const response = await fetch(`/admin/retry/${id}/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    });
+    const data = await response.json();
+    if (data.success) {
+        alert('✅ Request uspješan!');
+        window.location.reload();
+    } else {
+        alert('❌ Request neuspješan');
+    }
+}
+
+async function skipRequest(id) {
+    const response = await fetch(`/admin/skip/${id}/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token }}'}
+    });
+    if (await response.json()).success) {
+        alert('✅ Preskočen');
+        window.location.reload();
+    }
+}
+</script>
+{% endblock %}

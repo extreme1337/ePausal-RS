@@ -1,0 +1,214 @@
+{% extends 'core/base.html' %}
+{% block title %}Plaćanje{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12">
+    <div class="max-w-4xl mx-auto px-6">
+        <!-- Steps -->
+        <div class="flex justify-center mb-8">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                        <i class="fas fa-check"></i>
+                    </div>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center">
+                        <i class="fas fa-check"></i>
+                    </div>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">3</div>
+                    <span class="font-semibold">Plaćanje</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Order Summary -->
+            <div class="md:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg p-6 sticky top-6">
+                    <h3 class="font-bold text-lg mb-4">Pregled narudžbine</h3>
+                    
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Plan:</span>
+                            <span class="font-semibold">{{ plan_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Cijena:</span>
+                            <span class="font-semibold">{{ plan_price }} KM/mj</span>
+                        </div>
+                        <div class="flex justify-between text-green-600">
+                            <span>Trial (14 dana):</span>
+                            <span class="font-semibold">BESPLATNO</span>
+                        </div>
+                    </div>
+                    
+                    <div class="border-t pt-4 mb-6">
+                        <div class="flex justify-between text-lg font-bold">
+                            <span>Danas plaćate:</span>
+                            <span class="text-green-600">0 KM</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Nakon 14 dana: {{ plan_price }} KM/mj
+                        </p>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-lg text-sm">
+                        <p class="font-semibold mb-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Napomena:
+                        </p>
+                        <ul class="space-y-1 text-gray-700">
+                            <li>• Trial počinje odmah</li>
+                            <li>• Otkažite bilo kada</li>
+                            <li>• Naplaćivanje počinje 09.02.2026</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Payment Form -->
+            <div class="md:col-span-2">
+                <div class="bg-white rounded-xl shadow-xl p-8">
+                    <h2 class="text-2xl font-bold mb-6">Podaci o plaćanju</h2>
+                    
+                    <div class="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                        <p class="text-sm">
+                            <i class="fas fa-credit-card mr-2"></i>
+                            Kreditna kartica je potrebna za aktivaciju trial-a, ali <strong>nećete biti naplaćeni</strong> prvih 14 dana.
+                        </p>
+                    </div>
+                    
+                    <form method="POST" id="paymentForm">
+                        {% csrf_token %}
+                        
+                        <!-- Card Info -->
+                        <div class="space-y-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Broj kartice *</label>
+                                <input type="text" name="card_number" required 
+                                       pattern="\d{16}" maxlength="19"
+                                       placeholder="1234 5678 9012 3456"
+                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Datum isteka *</label>
+                                    <input type="text" name="card_expiry" required 
+                                           pattern="\d{2}/\d{2}" maxlength="5"
+                                           placeholder="MM/YY"
+                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">CVV *</label>
+                                    <input type="text" name="card_cvv" required 
+                                           pattern="\d{3,4}" maxlength="4"
+                                           placeholder="123"
+                                           class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Ime na kartici *</label>
+                                <input type="text" name="card_name" required
+                                       placeholder="IME PREZIME"
+                                       class="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+                        
+                        <!-- Security Info -->
+                        <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-shield-alt text-green-600 text-2xl"></i>
+                                <div class="text-sm">
+                                    <p class="font-semibold mb-1">Sigurno plaćanje</p>
+                                    <p class="text-gray-600">Vaši podaci su zaštićeni 256-bit SSL enkripcijom. Ne čuvamo podatke o karticama.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Auto-renewal Info -->
+                        <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-6">
+                            <h4 class="font-semibold mb-2">
+                                <i class="fas fa-sync-alt mr-2"></i>
+                                Automatsko obnavljanje
+                            </h4>
+                            <p class="text-sm text-gray-700 mb-2">
+                                Nakon 14 dana trial perioda, vaša pretplata će se automatski obnoviti mjesečno.
+                            </p>
+                            <p class="text-sm text-gray-700">
+                                <strong>Datum prve naplate: 09.02.2026</strong>
+                            </p>
+                            <p class="text-xs text-gray-600 mt-2">
+                                Možete otkazati bilo kada u Account Settings bez dodatnih troškova.
+                            </p>
+                        </div>
+                        
+                        <!-- Consent -->
+                        <label class="flex items-start gap-3 cursor-pointer mb-6">
+                            <input type="checkbox" name="payment_consent" required class="mt-1">
+                            <span class="text-sm text-gray-700">
+                                Razumijem da će mi nakon 14 dana trial perioda biti naplaćeno 
+                                <strong>{{ plan_price }} KM mjesečno</strong> sve dok ne otkažem pretplatu.
+                            </span>
+                        </label>
+                        
+                        <!-- Submit -->
+                        <button type="submit" class="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-bold text-lg hover:shadow-xl transition">
+                            <i class="fas fa-lock mr-2"></i>
+                            Aktiviraj 14-dnevni trial
+                        </button>
+                        
+                        <p class="text-xs text-center text-gray-500 mt-4">
+                            Pritiskom na dugme prihvatate naše uslove i politiku. Nećete biti naplaćeni do 09.02.2026.
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+// Stripe integration (u produkciji)
+// const stripe = Stripe('your-publishable-key');
+// const elements = stripe.elements();
+// const cardElement = elements.create('card');
+// cardElement.mount('#card-element');
+
+document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // U produkciji ovde ide Stripe payment intent
+    // Za sada redirect na success
+    
+    showLoading(true);
+    
+    // Simulate processing
+    setTimeout(() => {
+        window.location.href = '{% url "registration_success" %}';
+    }, 2000);
+});
+
+function showLoading(show) {
+    // Show/hide loading spinner
+    if (show) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-lg p-8 text-center">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p class="font-semibold">Procesiranje plaćanja...</p>
+                </div>
+            </div>
+        `);
+    } else {
+        document.getElementById('loadingOverlay')?.remove();
+    }
+}
+</script>
+{% endblock %}

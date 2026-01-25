@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ePauša RS - Paušalno oporezivanje Republike Srpske</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .smooth-scroll {
+            scroll-behavior: smooth;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="smooth-scroll">
+
+<!-- Navigation -->
+<nav class="fixed w-full z-50 bg-white shadow-lg">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-calculator text-white text-xl"></i>
+                </div>
+                <span class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    ePauša RS
+                </span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#features" class="text-gray-700 hover:text-blue-600 transition font-medium">Funkcionalnosti</a>
+                <a href="#pricing" class="text-gray-700 hover:text-blue-600 transition font-medium">Cijene</a>
+                <a href="#how-it-works" class="text-gray-700 hover:text-blue-600 transition font-medium">Kako radi</a>
+                <a href="#faq" class="text-gray-700 hover:text-blue-600 transition font-medium">FAQ</a>
+                <a href="{% url 'login' %}" class="text-gray-700 hover:text-blue-600 transition font-medium">Prijava</a>
+                <a href="{% url 'register_choose_plan' %}" class="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition">
+                    Počni besplatno
+                </a>
+            </div>
+            
+            <!-- Mobile menu button -->
+            <button onclick="toggleMobileMenu()" class="md:hidden">
+                <i class="fas fa-bars text-2xl"></i>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Mobile menu -->
+    <div id="mobileMenu" class="hidden md:hidden bg-white border-t">
+        <div class="px-6 py-4 space-y-3">
+            <a href="#features" class="block text-gray-700 hover:text-blue-600">Funkcionalnosti</a>
+            <a href="#pricing" class="block text-gray-700 hover:text-blue-600">Cijene</a>
+            <a href="#how-it-works" class="block text-gray-700 hover:text-blue-600">Kako radi</a>
+            <a href="#faq" class="block text-gray-700 hover:text-blue-600">FAQ</a>
+            <a href="{% url 'login' %}" class="block text-gray-700 hover:text-blue-600">Prijava</a>
+            <a href="{% url 'register_choose_plan' %}" class="block px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-center">
+                Počni besplatno
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="pt-24 pb-20 gradient-bg text-white">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+                <div class="inline-block px-4 py-2 glassmorphism rounded-full text-sm font-semibold mb-6">
+                    ✨ Novi način evidencije paušalnog poreza
+                </div>
+                <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                    Paušalno oporezivanje <span class="text-yellow-300">nikad lakše</span>
+                </h1>
+                <p class="text-xl mb-8 text-blue-100">
+                    Automatizujte fakturu, uplatnice i izvještaje. AI parsira izvode. Email podsjetnici za rokove. 
+                    Sve što vam treba na jednom mjestu.
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <a href="{% url 'register_choose_plan' %}" class="px-8 py-4 bg-white text-purple-600 rounded-lg font-bold hover:shadow-2xl transition text-center">
+                        <i class="fas fa-rocket mr-2"></i>
+                        Započni besplatno (14 dana)
+                    </a>
+                    <a href="#features" class="px-8 py-4 glassmorphism text-white rounded-lg font-bold hover:bg-white hover:bg-opacity-20 transition text-center">
+                        <i class="fas fa-play-circle mr-2"></i>
+                        Vidi kako radi
+                    </a>
+                </div>
+                <p class="text-sm text-blue-100 mt-6">
+                    <i class="fas fa-check-circle mr-2"></i>Bez kreditne kartice za trial
+                    <span class="mx-3">•</span>
+                    <i class="fas fa-times-circle mr-2"></i>Otkažite bilo kada
+                </p>
+            </div>
+            
+            <div class="hidden md:block">
+                <div class="floating">
+                    <div class="bg-white rounded-2xl shadow-2xl p-8">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-chart-line text-blue-600 text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Prihodi</p>
+                                        <p class="text-2xl font-bold text-gray-800">25,890 KM</p>
+                                    </div>
+                                </div>
+                                <span class="text-green-600 font-semibold">+12%</span>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-gray-600">Fakture</p>
+                                        <p class="text-2xl font-bold text-gray-800">12 kreiran</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded">
+                                <p class="text-sm font-semibold text-yellow-800">
+                                    <i class="fas fa-bell mr-2"></i>
+                                    Podsjetnik: Rok za PURS 10.02.2026
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Bar -->
+<section class="bg-gradient-to-r from-gray-900 to-gray-800 text-white py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="grid md:grid-cols-4 gap-8 text-center">
+            <div>
+                <p class="text-4xl font-bold mb-2">500+</p>
+                <p class="text-gray-300">Aktivnih korisnika</p>
+            </div>
+            <div>
+                <p class="text-4xl font-bold mb-2">10,000+</p>
+                <p class="text-gray-300">Faktura kreirano</p>
+            </div>
+            <div>
+                <p class="text-4xl font-bold mb-2">98%</p>
+                <p class="text-gray-300">Zadovoljstvo</p>
+            </div>
+            <div>
+                <p class="text-4xl font-bold mb-2">24/7</p>
+                <p class="text-gray-300">Podrška</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Sve što vam treba. <span class="text-blue-600">Ništa više.</span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Kompletan sistem dizajniran za paušalce u Republici Srpskoj
+            </p>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Feature 1 -->
+            <div class="group bg-gradient-to-br from-blue-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-robot text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">AI Email Parsing</h3>
+                <p class="text-gray-600 mb-4">
+                    Automatsko prepoznavanje i parsiranje bankovnih izvoda. AI analizira NLB email-ove i dodaje transakcije.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>95-98% tačnost</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Automatska kategorizacija</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Bulk import</li>
+                </ul>
+            </div>
+            
+            <!-- Feature 2 -->
+            <div class="group bg-gradient-to-br from-purple-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-file-invoice text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Smart Dokumenti</h3>
+                <p class="text-gray-600 mb-4">
+                    Generiši fakture (Word), uplatnice (PNG) i godišnje izvještaje (PDF) jednim klikom.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Tačan RS format</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Auto-fill podataka</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Download istorije</li>
+                </ul>
+            </div>
+            
+            <!-- Feature 3 -->
+            <div class="group bg-gradient-to-br from-green-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-brain text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">AI Predikcije</h3>
+                <p class="text-gray-600 mb-4">
+                    Machine learning predviđa buduće prihode i daje business preporuke.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>3 mjeseca naprijed</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Confidence score</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Trend analiza</li>
+                </ul>
+            </div>
+            
+            <!-- Feature 4 -->
+            <div class="group bg-gradient-to-br from-orange-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-chart-bar text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Live Dashboard</h3>
+                <p class="text-gray-600 mb-4">
+                    Real-time Chart.js grafici za prihode, poreze i neto zaradu.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Interactive charts</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Export u Excel</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>KPI tracking</li>
+                </ul>
+            </div>
+            
+            <!-- Feature 5 -->
+            <div class="group bg-gradient-to-br from-red-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-envelope text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Email Automation</h3>
+                <p class="text-gray-600 mb-4">
+                    Automatski podsjetnici za rokove plaćanja 5. u mjesecu.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Smart reminders</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Mjesečni izvještaji</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Custom schedule</li>
+                </ul>
+            </div>
+            
+            <!-- Feature 6 -->
+            <div class="group bg-gradient-to-br from-indigo-50 to-white p-8 rounded-2xl hover:shadow-2xl transition transform hover:-translate-y-2">
+                <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition">
+                    <i class="fas fa-calendar-alt text-3xl text-white"></i>
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Kalendar & Rokovi</h3>
+                <p class="text-gray-600 mb-4">
+                    FullCalendar integracija sa svim rokovima za PURS i FZO RS.
+                </p>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Auto deadlines</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Sync sa Google</li>
+                    <li><i class="fas fa-check text-green-500 mr-2"></i>Push notifications</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works" class="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl font-bold mb-4">Kako funkcioniše?</h2>
+            <p class="text-xl text-gray-600">3 jednostavna koraka do automatizacije</p>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="text-center">
+                <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl text-white font-bold">
+                    1
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Registrujte se</h3>
+                <p class="text-gray-600">
+                    Odaberite plan, unesite JIB i broj računa. 14 dana besplatno bez kreditne kartice.
+                </p>
+            </div>
+            
+            <div class="text-center">
+                <div class="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl text-white font-bold">
+                    2
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Povežite izvode</h3>
+                <p class="text-gray-600">
+                    Forward email izvode sa banke. AI automatski parsira i dodaje transakcije.
+                </p>
+            </div>
+            
+            <div class="text-center">
+                <div class="w-20 h-20 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl text-white font-bold">
+                    3
+                </div>
+                <h3 class="text-2xl font-bold mb-3">Automatizujte sve</h3>
+                <p class="text-gray-600">
+                    Sistem kreira fakture, uplatnice i šalje podsjetnike. Vi samo pratite statistiku.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Section -->
+<section id="pricing" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold mb-4">Transparentne cijene</h2>
+            <p class="text-xl text-gray-600">Odaberite plan koji vam odgovara</p>
+            <div class="inline-block mt-6 px-6 py-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
+                <p class="font-semibold text-yellow-800">
+                    <i class="fas fa-gift mr-2"></i>
+                    14 dana besplatno za sve planove
+                </p>
+            </div>
+        </div>
+        
+        <div class="grid md:grid-cols-4 gap-6">
+            {% for plan in plans %}
+            <div class="bg-white border-2 {% if plan.name == 'Professional' %}border-blue-500 shadow-xl scale-105{% else %}border-gray-200{% endif %} rounded-2xl p-8 hover:shadow-2xl transition relative">
+                {% if plan.name == 'Professional' %}
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span class="px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-full text-sm font-bold shadow-lg">
+                        🔥 NAJPOPULARNIJI
+                    </span>
+                </div>
+                {% endif %}
+                {% if plan.name == 'Enterprise' %}
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-full text-sm font-bold shadow-lg">
+                        ⭐ PREMIUM
+                    </span>
+                </div>
+                {% endif %}
+                
+                <h3 class="text-2xl font-bold mb-2 {% if plan.name == 'Enterprise' %}text-purple-600{% else %}text-gray-900{% endif %}">
+                    {{ plan.name }}
+                </h3>
+                
+                <div class="mb-6">
+                    <span class="text-5xl font-bold text-gray-900">{{ plan.price }}</span>
+                    <span class="text-xl text-gray-600"> KM</span>
+                    <p class="text-sm text-gray-500">po mjesecu</p>
+                </div>
+                
+                <ul class="space-y-3 mb-8">
+                    {% for feature in plan.features %}
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-check-circle text-green-500 mt-0.5"></i>
+                        <span class="text-sm text-gray-700">{{ feature }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <a href="{% url 'register_choose_plan' %}?plan={{ plan.name }}" 
+                   class="block text-center py-3 {% if plan.name == 'Professional' %}bg-gradient-to-r from-blue-600 to-blue-700{% elif plan.name == 'Enterprise' %}bg-gradient-to-r from-purple-600 to-purple-700{% else %}bg-gray-800{% endif %} text-white rounded-lg font-semibold hover:shadow-lg transition">
+                    Počni trial
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <p class="text-center text-gray-600 mt-8">
+            Svi planovi uključuju: SSL zaštitu • GDPR compliance • Redovne backup-e • Email podršku
+        </p>
+    </div>
+</section>
+
+<!-- Social Proof -->
+<section class="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold mb-4">Šta korisnici kažu</h2>
+        </div>
+        
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold">Ana M.</p>
+                        <p class="text-sm text-gray-600">IT Consultant</p>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                </div>
+                <p class="text-gray-700">
+                    "Konačno sistem koji radi! AI parsing izvoda mi štedi 2 sata mjesečno. Preporučujem!"
+                </p>
+            </div>
+            
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-purple-600"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold">Petar K.</p>
+                        <p class="text-sm text-gray-600">Građevinski inženjer</p>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                </div>
+                <p class="text-gray-700">
+                    "Email podsjetnici su spasili moje glave! Nikad više zaboravljene uplate."
+                </p>
+            </div>
+            
+            <div class="bg-white p-8 rounded-xl shadow-lg">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold">Jelena D.</p>
+                        <p class="text-sm text-gray-600">Software Developer</p>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                    <i class="fas fa-star text-yellow-400"></i>
+                </div>
+                <p class="text-gray-700">
+                    "Dashboard grafici su nevjerovatni. Vidim tačno gdje ide moj novac. 10/10!"
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section id="faq" class="py-20 bg-white">
+    <div class="max-w-4xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h2 class="text-4xl font-bold mb-4">Često postavljana pitanja</h2>
+        </div>
+        
+        <div class="space-y-4">
+            <details class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition">
+                <summary class="font-bold text-lg cursor-pointer flex justify-between items-center">
+                    <span>Šta je paušalno oporezivanje?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <p class="text-gray-600 mt-4">
+                    Paušalno oporezivanje je sistem gdje plaćate fiksnu stopu poreza (2% u RS) na ostvareni prihod. 
+                    Limit je 100,000 KM godišnje. Plaćate i doprinose (70% prosječne plate) mjesečno.
+                </p>
+            </details>
+            
+            <details class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition">
+                <summary class="font-bold text-lg cursor-pointer flex justify-between items-center">
+                    <span>Da li mogu otkazati trial?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <p class="text-gray-600 mt-4">
+                    Apsolutno! Možete otkazati bilo kada u prvih 14 dana i nećete biti naplaćeni. 
+                    Nakon trial-a, mjesečna pretplata se može otkazati bilo kada bez penala.
+                </p>
+            </details>
+            
+            <details class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition">
+                <summary class="font-bold text-lg cursor-pointer flex justify-between items-center">
+                    <span>Kako AI parsing tačno radi?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <p class="text-gray-600 mt-4">
+                    Forward-ujete email izvode sa NLB Banke na našu adresu. AI analizira PDF, prepoznaje 
+                    iznose, klijente i svrhe transakcija sa 95-98% tačnošću. Sve se automatski dodaje u vaš dashboard.
+                </p>
+            </details>
+            
+            <details class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition">
+                <summary class="font-bold text-lg cursor-pointer flex justify-between items-center">
+                    <span>Koliko dugo se čuvaju dokumenti?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <p class="text-gray-600 mt-4">
+                    Zavisi od plana: Starter 30 dana, Professional 90 dana, Business 180 dana, Enterprise 365 dana. 
+                    Uvijek možete download-ovati prije isteka.
+                </p>
+            </details>
+            
+            <details class="bg-gray-50 p-6 rounded-xl hover:shadow-lg transition">
+                <summary class="font-bold text-lg cursor-pointer flex justify-between items-center">
+                    <span>Da li ste sigurni i GDPR compliant?</span>
+                    <i class="fas fa-chevron-down"></i>
+                </summary>
+                <p class="text-gray-600 mt-4">
+                    Da! Koristimo 256-bit SSL enkripciju, ne čuvamo podatke kreditnih kartica, 
+                    audit trail za sve promjene, i omogućavamo export svih podataka (GDPR right to data portability).
+                </p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<!-- Final CTA -->
+<section class="py-20 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white">
+    <div class="max-w-4xl mx-auto px-6 text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-6">
+            Pridružite se stotinama paušalaca
+        </h2>
+        <p class="text-xl mb-8 text-blue-100">
+            Započnite danas sa 14-dnevnim besplatnim trial-om
+        </p>
+        <a href="{% url 'register_choose_plan' %}" class="inline-block px-12 py-4 bg-white text-purple-600 rounded-lg font-bold text-lg hover:shadow-2xl transition transform hover:scale-105">
+            <i class="fas fa-rocket mr-2"></i>
+            Počni besplatno →
+        </a>
+        <p class="text-sm mt-6 text-blue-100">
+            Bez kreditne kartice • Otkažite bilo kada • SSL zaštita
+        </p>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="bg-gray-900 text-gray-300 py-12">
+    <div class="max-w-7xl mx-auto px-6">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+                <h3 class="text-white font-bold text-lg mb-4">ePauša RS</h3>
+                <p class="text-sm">
+                    Moderna platforma za evidenciju paušalnog poreza u Republici Srpskoj.
+                </p>
+            </div>
+            
+            <div>
+                <h4 class="text-white font-semibold mb-4">Proizvod</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#features" class="hover:text-white transition">Funkcionalnosti</a></li>
+                    <li><a href="#pricing" class="hover:text-white transition">Cijene</a></li>
+                    <li><a href="#faq" class="hover:text-white transition">FAQ</a></li>
+                </ul>
+            </div>
+            
+            <div>
+                <h4 class="text-white font-semibold mb-4">Kompanija</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-white transition">O nama</a></li>
+                    <li><a href="#" class="hover:text-white transition">Blog</a></li>
+                    <li><a href="#" class="hover:text-white transition">Kontakt</a></li>
+                </ul>
+            </div>
+            
+            <div>
+                <h4 class="text-white font-semibold mb-4">Pravno</h4>
+                <ul class="space-y-2 text-sm">
+                    <li><a href="#" class="hover:text-white transition">Uslovi korištenja</a></li>
+                    <li><a href="#" class="hover:text-white transition">Politika privatnosti</a></li>
+                    <li><a href="#" class="hover:text-white transition">GDPR</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="border-t border-gray-800 pt-8 text-center text-sm">
+            <p>© 2025 ePauša RS. Sva prava zadržana.</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+function toggleMobileMenu() {
+    document.getElementById('mobileMenu').classList.toggle('hidden');
+}
+
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Close mobile menu if open
+            document.getElementById('mobileMenu')?.classList.add('hidden');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

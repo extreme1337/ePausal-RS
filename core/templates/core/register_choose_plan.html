@@ -1,0 +1,85 @@
+{% extends 'core/base.html' %}
+{% block title %}Odaberite plan{% endblock %}
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 py-12">
+    <div class="max-w-6xl mx-auto px-6">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold mb-4">Odaberite svoj plan</h1>
+            <p class="text-xl text-gray-600">14 dana besplatno, otkažite bilo kada</p>
+        </div>
+        
+        <!-- Steps Indicator -->
+        <div class="flex justify-center mb-12">
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">1</div>
+                    <span class="font-semibold">Odabir plana</span>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-bold">2</div>
+                    <span class="text-gray-600">Osnovni podaci</span>
+                </div>
+                <i class="fas fa-arrow-right text-gray-400"></i>
+                <div class="flex items-center gap-2">
+                    <div class="w-10 h-10 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center font-bold">3</div>
+                    <span class="text-gray-600">Plaćanje</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pricing Cards -->
+        <div class="grid md:grid-cols-4 gap-6">
+            {% for plan in plans %}
+            <div class="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition {% if plan.name == 'Professional' %}ring-4 ring-blue-500{% endif %}">
+                {% if plan.name == 'Professional' %}
+                <div class="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <span class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold">
+                        🔥 NAJPOPULARNIJI
+                    </span>
+                </div>
+                {% endif %}
+                
+                <h3 class="text-2xl font-bold mb-2">{{ plan.name }}</h3>
+                <div class="text-4xl font-bold text-blue-600 mb-4">
+                    {{ plan.price }} <span class="text-xl">KM</span>
+                    <span class="text-sm text-gray-500">/mj</span>
+                </div>
+                
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p class="text-sm text-yellow-800 font-semibold">
+                        <i class="fas fa-gift mr-1"></i>
+                        14 dana BESPLATNO
+                    </p>
+                </div>
+                
+                <ul class="space-y-2 mb-6">
+                    {% for feature in plan.features %}
+                    <li class="flex items-start gap-2 text-sm">
+                        <i class="fas fa-check text-green-500 mt-0.5"></i>
+                        <span>{{ feature }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                
+                <a href="{% url 'register' %}?plan={{ plan.name }}" 
+                   class="block text-center py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition">
+                    Izaberi {{ plan.name }}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="text-center mt-8">
+            <p class="text-sm text-gray-600">
+                <i class="fas fa-lock mr-1"></i>
+                Sigurno plaćanje • 
+                <i class="fas fa-shield-alt mr-1"></i>
+                SSL zaštita • 
+                <i class="fas fa-times-circle mr-1"></i>
+                Otkažite bilo kada
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

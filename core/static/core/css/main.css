@@ -1,0 +1,368 @@
+/* ePauša RS - Main CSS */
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+.dark-mode {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+.dark-mode .bg-white {
+    background-color: #2d3748;
+}
+.dark-mode .text-gray-800 {
+    color: #e2e8f0;
+}
+.dark-mode .text-gray-600 {
+    color: #cbd5e0;
+}
+.dark-mode .border-gray-300 {
+    border-color: #4a5568;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+}
+.animate-shake {
+    animation: shake 0.5s ease-out;
+}
+
+/* ============================================
+   HOVER EFFECTS
+   ============================================ */
+.card-hover {
+    transition: all 0.3s ease;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   GRADIENT BACKGROUNDS
+   ============================================ */
+.gradient-blue {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+.gradient-green {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+.gradient-purple {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+.hero-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* ============================================
+   PRICING CARDS
+   ============================================ */
+.pricing-card {
+    transition: all 0.3s ease;
+    position: relative;
+}
+.pricing-card:hover {
+    transform: scale(1.05);
+    z-index: 10;
+}
+.pricing-card.featured {
+    border: 3px solid #9333ea;
+    transform: scale(1.05);
+}
+
+/* ============================================
+   LOADING SPINNER
+   ============================================ */
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
+.progress-bar {
+    transition: width 0.5s ease;
+}
+
+/* ============================================
+   FORM INPUTS & VALIDATION
+   ============================================ */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Input validation states */
+.border-green-500 {
+    border-color: #10b981 !important;
+}
+.border-yellow-500 {
+    border-color: #f59e0b !important;
+}
+.border-red-500 {
+    border-color: #ef4444 !important;
+}
+
+/* Password match indicator */
+.text-green-600 {
+    color: #059669;
+}
+.text-red-600 {
+    color: #dc2626;
+}
+
+/* Monospace inputs for numbers */
+.font-mono {
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Input counter */
+.input-counter {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+.btn-primary {
+    background: linear-gradient(to right, #3b82f6, #2563eb);
+    transition: all 0.3s ease;
+}
+.btn-primary:hover {
+    background: linear-gradient(to right, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   TOOLTIPS
+   ============================================ */
+.tooltip {
+    position: relative;
+}
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    background: #1f2937;
+    color: white;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+}
+
+/* ============================================
+   ALERT BOXES
+   ============================================ */
+.alert-warning {
+    background-color: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    border: 1px solid #93c5fd;
+    border-radius: 0.5rem;
+    padding: 1rem;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    border-left: 4px solid #ef4444;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    border-left: 4px solid #10b981;
+    padding: 1rem;
+    border-radius: 0.5rem;
+}
+
+/* ============================================
+   RESPONSIVE TABLES
+   ============================================ */
+@media (max-width: 768px) {
+    .table-responsive {
+        overflow-x: auto;
+    }
+}
+
+/* ============================================
+   FEATURES & CARDS
+   ============================================ */
+.feature-card {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   PRICING STEPS
+   ============================================ */
+.pricing-step {
+    position: relative;
+}
+.pricing-step::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -20px;
+    width: 40px;
+    height: 2px;
+    background: #e5e7eb;
+}
+.pricing-step:last-child::after {
+    display: none;
+}
+
+/* Step indicator animations */
+.step-complete {
+    background: #10b981;
+    animation: pulse 0.5s ease-in-out;
+}
+
+/* ============================================
+   TRIAL BADGE
+   ============================================ */
+.trial-badge {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    animation: pulse 2s infinite;
+}
+
+/* ============================================
+   CARD TYPE BADGES
+   ============================================ */
+.card-type-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+}
+
+/* ============================================
+   SMOOTH TRANSITIONS
+   ============================================ */
+input,
+button,
+select,
+textarea {
+    transition: all 0.2s ease-in-out;
+}
+
+/* ============================================
+   DRAG & DROP ZONE
+   ============================================ */
+.drop-zone {
+    border: 2px dashed #cbd5e0;
+    transition: all 0.3s ease;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+    border-color: #3b82f6;
+    background-color: #eff6ff;
+}
+
+/* ============================================
+   NOTIFICATIONS
+   ============================================ */
+.notification {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.hidden {
+    display: none !important;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.no-select {
+    user-select: none;
+}
+
+/* ============================================
+   MOBILE RESPONSIVENESS
+   ============================================ */
+@media (max-width: 640px) {
+    .pricing-card {
+        margin: 1rem 0;
+    }
+    
+    .hero-gradient {
+        padding: 2rem 1rem;
+    }
+    
+    .notification {
+        left: 1rem;
+        right: 1rem;
+    }
+}

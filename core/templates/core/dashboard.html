@@ -1,0 +1,248 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Dashboard - ePauša RS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <!-- Language & Theme Switcher -->
+    <div class="flex justify-end gap-2 mb-4">
+        <select onchange="changeLanguage(this.value)" class="px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+            <option value="sr">🇷🇸 Srpski</option>
+            <option value="en">🇬🇧 English</option>
+        </select>
+        <button onclick="toggleDarkMode()" class="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">{{ korisnik.ime }}</h1>
+        <p class="text-gray-600">{{ korisnik.plan }} plan • {{ korisnik.user.email }}</p>
+    </div>
+
+    <!-- Stats Cards with Gradients -->
+    <div class="grid md:grid-cols-4 gap-6 mb-6">
+        <div class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-chart-line text-3xl"></i>
+                <h3 class="font-semibold">Ukupan prihod</h3>
+            </div>
+            <p class="text-4xl font-bold">{{ stats.ukupno|floatformat:0 }}</p>
+            <p class="text-sm opacity-90 mt-1">KM</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-calculator text-3xl"></i>
+                <h3 class="font-semibold">Porez (2%)</h3>
+            </div>
+            <p class="text-4xl font-bold">{{ stats.porez|floatformat:0 }}</p>
+            <p class="text-sm opacity-90 mt-1">KM</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-file-alt text-3xl"></i>
+                <h3 class="font-semibold">Doprinosi</h3>
+            </div>
+            <p class="text-4xl font-bold">{{ stats.doprinosi|floatformat:0 }}</p>
+            <p class="text-sm opacity-90 mt-1">KM</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
+            <div class="flex items-center gap-3 mb-2">
+                <i class="fas fa-check-circle text-3xl"></i>
+                <h3 class="font-semibold">Neto</h3>
+            </div>
+            <p class="text-4xl font-bold">{{ stats.neto|floatformat:0 }}</p>
+            <p class="text-sm opacity-90 mt-1">KM</p>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+        <!-- Prihodi Chart -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                <i class="fas fa-chart-area mr-2 text-blue-600"></i>
+                Prihodi po mjesecima
+            </h3>
+            <div style="height: 250px;">
+                <canvas id="prihodiChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Predictions Chart -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">
+                <i class="fas fa-crystal-ball mr-2 text-purple-600"></i>
+                AI Predikcije prihoda
+            </h3>
+            {% if predictions %}
+            <div style="height: 250px;">
+                <canvas id="predictionsChart"></canvas>
+            </div>
+            {% else %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-info-circle text-4xl mb-2 opacity-50"></i>
+                <p class="text-sm">Potrebno je najmanje 3 mjeseca podataka za predikcije</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- AI Predictions Cards -->
+    {% if predictions %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">
+            <i class="fas fa-brain mr-2 text-purple-600"></i>
+            AI Predikcije za naredne mjesece
+        </h3>
+        <div class="grid md:grid-cols-3 gap-4">
+            {% for pred in predictions %}
+            <div class="border-2 border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition">
+                <p class="text-sm text-gray-600 mb-1">{{ pred.mjesec }}</p>
+                <p class="text-2xl font-bold text-purple-600">{{ pred.predicted_income|floatformat:0 }} KM</p>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2">
+                        <div class="bg-purple-500 h-2 rounded-full transition-all" style="width: {{ pred.confidence }}%"></div>
+                    </div>
+                    <span class="text-xs text-gray-600">{{ pred.confidence|floatformat:0 }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions & Overview -->
+    <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Brzi pregled</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span class="text-gray-700"><i class="fas fa-file-invoice mr-2 text-blue-600"></i>Fakture</span>
+                    <span class="font-semibold text-blue-600">{{ fakture_count }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                    <span class="text-gray-700"><i class="fas fa-money-check mr-2 text-green-600"></i>Uplatnice</span>
+                    <span class="font-semibold text-green-600">{{ uplatnice_count }}</span>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                    <span class="text-gray-700"><i class="fas fa-envelope mr-2 text-red-600"></i>Email Inbox</span>
+                    <span class="font-semibold text-red-600">{{ inbox_count }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Plan detalji</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Trenutni plan</span>
+                    <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                        {{ korisnik.plan }}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Registrovan</span>
+                    <span class="font-semibold">{{ korisnik.registrovan|date:"d.m.Y" }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Status</span>
+                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                        <i class="fas fa-check-circle mr-1"></i>Aktivan
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Prihodi Chart
+const ctx1 = document.getElementById('prihodiChart');
+if (ctx1) {
+    new Chart(ctx1, {
+        type: 'line',
+        data: {{ chart_data|safe }},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top' },
+                title: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+
+// Predictions Chart
+{% if predictions %}
+const ctx2 = document.getElementById('predictionsChart');
+if (ctx2) {
+    new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: {{ pred_labels|safe }},
+            datasets: [{
+                label: 'Predviđeni prihod (KM)',
+                data: {{ pred_values|safe }},
+                backgroundColor: 'rgba(139, 92, 246, 0.6)',
+                borderColor: 'rgb(139, 92, 246)',
+                borderWidth: 2,
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+}
+{% endif %}
+
+// Language switcher
+function changeLanguage(lang) {
+    window.location.href = `/change-language/${lang}/`;
+}
+
+// Dark mode toggle
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+}
+
+// Load dark mode preference
+if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+}
+</script>
+
+<style>
+.dark-mode {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+.dark-mode .bg-white {
+    background-color: #2d3748;
+}
+.dark-mode .text-gray-800 {
+    color: #e2e8f0;
+}
+.dark-mode .text-gray-600 {
+    color: #cbd5e0;
+}
+</style>
+{% endblock %}

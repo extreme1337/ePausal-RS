@@ -1,0 +1,167 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Bulk Upload - ePauša RS{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">
+            <i class="fas fa-cloud-upload-alt mr-2 text-blue-600"></i>
+            Bulk Upload PDF Faktura
+        </h2>
+        
+        <p class="text-gray-600 mb-6">
+            Upload više PDF faktura odjednom. Sistem će automatski parsirati podatke koristeći AI i OCR.
+        </p>
+
+        <!-- Drag & Drop Zone -->
+        <div id="dropZone" class="border-4 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-blue-500 transition cursor-pointer bg-gray-50">
+            <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+            <p class="text-lg text-gray-600 mb-2">
+                Prevuci PDF fajlove ovde ili klikni za izbor
+            </p>
+            <p class="text-sm text-gray-500">
+                Podržani formati: PDF, maksimalno 10 fajlova odjednom
+            </p>
+            <input type="file" id="fileInput" multiple accept=".pdf" class="hidden">
+        </div>
+
+        <!-- Upload Progress -->
+        <div id="uploadProgress" class="hidden mt-6">
+            <h3 class="font-bold text-gray-800 mb-3">Upload u toku...</h3>
+            <div class="space-y-3" id="progressList"></div>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="hidden mt-6">
+            <h3 class="font-bold text-gray-800 mb-3">Rezultati parsiranja</h3>
+            <div class="space-y-3" id="resultsList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const uploadProgress = document.getElementById('uploadProgress');
+const results = document.getElementById('results');
+const progressList = document.getElementById('progressList');
+const resultsList = document.getElementById('resultsList');
+
+// Click to upload
+dropZone.addEventListener('click', () => fileInput.click());
+
+// Drag & Drop handlers
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+    if (files.length > 0) {
+        uploadFiles(files);
+    } else {
+        alert('Molimo upload-ujte samo PDF fajlove');
+    }
+});
+
+fileInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        uploadFiles(files);
+    }
+});
+
+async function uploadFiles(files) {
+    if (files.length > 10) {
+        alert('Maksimalno 10 fajlova odjednom');
+        return;
+    }
+    
+    uploadProgress.classList.remove('hidden');
+    results.classList.add('hidden');
+    progressList.innerHTML = '';
+    resultsList.innerHTML = '';
+    
+    const formData = new FormData();
+    files.forEach(file => formData.append('documents', file));
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    
+    // Show progress
+    files.forEach(file => {
+        const progressItem = document.createElement('div');
+        progressItem.className = 'flex items-center gap-3 p-3 bg-blue-50 rounded-lg';
+        progressItem.innerHTML = `
+            <i class="fas fa-spinner fa-spin text-blue-600"></i>
+            <span>${file.name}</span>
+            <span class="ml-auto text-sm text-gray-600">Parsiranje...</span>
+        `;
+        progressList.appendChild(progressItem);
+    });
+    
+    try {
+        const response = await fetch('{% url "bulk_upload" %}', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        uploadProgress.classList.add('hidden');
+        results.classList.remove('hidden');
+        
+        data.results.forEach(result => {
+            const resultItem = document.createElement('div');
+            resultItem.className = 'border rounded-lg p-4 bg-gray-50';
+            
+            const extracted = result.extracted;
+            const hasData = extracted && !extracted.error;
+            
+            resultItem.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex-1">
+                        <p class="font-semibold mb-2">
+                            <i class="fas ${hasData ? 'fa-check-circle text-green-600' : 'fa-exclamation-circle text-red-600'} mr-2"></i>
+                            ${result.filename}
+                        </p>
+                        ${hasData ? `
+                            <div class="text-sm space-y-1">
+                                <p><strong>Klijent:</strong> ${extracted.klijent || 'N/A'}</p>
+                                <p><strong>Iznos:</strong> ${extracted.iznos || 'N/A'} KM</p>
+                                <p><strong>Datum:</strong> ${extracted.datum || 'N/A'}</p>
+                            </div>
+                        ` : `
+                            <p class="text-sm text-red-600">Greška: ${extracted.error || 'Nije moguće parsirati'}</p>
+                        `}
+                    </div>
+                    ${hasData ? `
+                        <button onclick="createInvoiceFromData(${result.doc_id})" 
+                                class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">
+                            Kreiraj fakturu
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            resultsList.appendChild(resultItem);
+        });
+        
+    } catch (error) {
+        alert('Greška prilikom upload-a: ' + error.message);
+    }
+}
+
+function createInvoiceFromData(docId) {
+    // TODO: Implementiraj kreiranje fakture iz OCR podataka
+    alert('Kreiranje fakture iz OCR podataka - dolazi uskoro!');
+}
+</script>
+{% endblock %}

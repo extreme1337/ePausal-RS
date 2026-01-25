@@ -1,0 +1,108 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Kalendar - ePauša RS{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">
+                <i class="fas fa-calendar-alt mr-2 text-purple-600"></i>
+                Kalendar rokova i događaja
+            </h2>
+            <button onclick="addEvent()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                <i class="fas fa-plus mr-2"></i>
+                Dodaj događaj
+            </button>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex gap-4 mb-4 flex-wrap">
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-blue-500 rounded"></div>
+                <span class="text-sm">Rokovi plaćanja</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-purple-500 rounded"></div>
+                <span class="text-sm">Podsjetnici</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                <span class="text-sm">Sastanci</span>
+            </div>
+        </div>
+
+        <!-- Calendar -->
+        <div id="calendar"></div>
+    </div>
+</div>
+
+<!-- Event Modal -->
+<div id="eventModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 class="text-xl font-bold mb-4">Detalji događaja</h3>
+        <div id="eventDetails"></div>
+        <button onclick="closeModal()" class="mt-4 px-4 py-2 bg-gray-600 text-white rounded-lg">
+            Zatvori
+        </button>
+    </div>
+</div>
+
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarEl = document.getElementById('calendar');
+    
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'sr',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listMonth'
+        },
+        events: {{ events|safe }},
+        eventClick: function(info) {
+            showEventDetails(info.event);
+        },
+        dateClick: function(info) {
+            addEventOnDate(info.dateStr);
+        },
+        height: 'auto'
+    });
+    
+    calendar.render();
+});
+
+function showEventDetails(event) {
+    const modal = document.getElementById('eventModal');
+    const details = document.getElementById('eventDetails');
+    
+    details.innerHTML = `
+        <p class="mb-2"><strong>Naslov:</strong> ${event.title}</p>
+        <p class="mb-2"><strong>Datum:</strong> ${event.start.toLocaleDateString('sr-RS')}</p>
+        ${event.extendedProps.description ? `<p class="mb-2"><strong>Opis:</strong> ${event.extendedProps.description}</p>` : ''}
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeModal() {
+    document.getElementById('eventModal').classList.add('hidden');
+}
+
+function addEvent() {
+    // TODO: Implementiraj formu za dodavanje
+    alert('Funkcionalnost dodavanja događaja dolazi uskoro!');
+}
+
+function addEventOnDate(dateStr) {
+    // TODO: Implementiraj quick add
+    console.log('Add event on:', dateStr);
+}
+</script>
+{% endblock %}

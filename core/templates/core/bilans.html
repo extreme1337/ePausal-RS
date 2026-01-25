@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+{% block title %}Bilans{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold mb-4">Bilans uspjeha</h2>
+        
+        <form method="POST" id="bilansForm" class="grid md:grid-cols-3 gap-4 mb-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm mb-2">Od mjeseca</label>
+                <input type="month" name="od" value="2025-01" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm mb-2">Do mjeseca</label>
+                <input type="month" name="do" value="2025-10" required class="w-full px-4 py-2 border rounded-lg">
+            </div>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg self-end">
+                Generiši bilans
+            </button>
+        </form>
+        
+        <p class="text-sm text-gray-600 mb-6">Čuvanje: {{ retention_days }} dana</p>
+        
+        {% if bilansi %}
+        <h3 class="font-bold mb-3">Sačuvani bilansi</h3>
+        <div class="space-y-3">
+            {% for bilans in bilansi %}
+            <div class="border rounded-lg p-4 bg-gray-50 flex justify-between">
+                <div>
+                    <p class="font-semibold">Period: {{ bilans.od_mjesec }} - {{ bilans.do_mjesec }}</p>
+                    <p class="text-sm text-gray-600">Prihod: {{ bilans.ukupan_prihod }} KM • Neto: {{ bilans.neto }} KM</p>
+                    <p class="text-xs">Ističe za {{ bilans.days_until_expiry }} dana</p>
+                </div>
+                <a href="{% url 'download_bilans' bilans.id %}" class="px-4 py-2 bg-blue-600 text-white rounded">
+                    Preuzmi
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+<script>
+document.getElementById('bilansForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const response = await fetch('{% url "bilans" %}', {method: 'POST', body: formData});
+    const data = await response.json();
+    if (data.success) {
+        window.location.href = data.file_url;
+        setTimeout(() => window.location.reload(), 1000);
+    }
+});
+</script>
+{% endblock %}
