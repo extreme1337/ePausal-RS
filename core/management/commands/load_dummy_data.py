@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
-from core.models import *
+from core.models import Korisnik, Prihod, Faktura, StavkaFakture, EmailInbox, Uplatnica, Currency, SystemLog, FailedRequest
 from decimal import Decimal
 from datetime import date
 
@@ -45,28 +45,66 @@ class Command(BaseCommand):
                 defaults={'iznos': Decimal(iznos)}
             )
         
-        # Fakture
+        # Fakture - NOVO: sa tekstualnim poljima
         fakture_jelena = [
-            ('F001/25', date(2025, 1, 3), 'MICROSOFT IRELAND OPERATIONS LTD', 25600, 'Plaćena', 'Enterprise cloud consulting - Azure'),
-            ('F002/25', date(2025, 2, 10), 'GOOGLE IRELAND LIMITED', 23450, 'Plaćena', 'GCP optimization'),
-            ('F003/25', date(2025, 3, 17), 'AMAZON WEB SERVICES EMEA SARL', 27890, 'Plaćena', 'AWS implementation'),
-            ('F004/25', date(2025, 4, 8), 'IBM EUROPE', 26120, 'Plaćena', 'AI integration'),
-            ('F005/25', date(2025, 5, 22), 'ORACLE CORPORATION UK LTD', 28340, 'Plaćena', 'Database migration'),
-            ('F006/25', date(2025, 6, 15), 'SAP SE', 24780, 'Na čekanju', 'ERP integration'),
+            {
+                'broj': 'F001/25',
+                'datum': date(2025, 1, 3),
+                'primalac_naziv': 'MICROSOFT IRELAND OPERATIONS LTD',
+                'primalac_adresa': 'One Microsoft Place, South County Business Park',
+                'primalac_mjesto': 'Dublin 18, Ireland',
+                'iznos': 25600,
+                'opis': 'Enterprise cloud consulting - Azure'
+            },
+            {
+                'broj': 'F002/25',
+                'datum': date(2025, 2, 10),
+                'primalac_naziv': 'GOOGLE IRELAND LIMITED',
+                'primalac_adresa': 'Gordon House, Barrow Street',
+                'primalac_mjesto': 'Dublin 4, Ireland',
+                'iznos': 23450,
+                'opis': 'GCP optimization services'
+            },
         ]
         
-        for broj, datum, klijent, iznos, status, opis in fakture_jelena:
-            Faktura.objects.get_or_create(
-                korisnik=korisnik_jelena,
-                broj=broj,
+        for f_data in fakture_jelena:
+            faktura, created = Faktura.objects.get_or_create(
+                user=user_jelena,
+                broj_fakture=f_data['broj'],
                 defaults={
-                    'datum': datum,
-                    'klijent': klijent,
-                    'iznos': Decimal(iznos),
-                    'status': status,
-                    'opis': opis
+                    'datum_izdavanja': f_data['datum'],
+                    'mjesto_izdavanja': 'Banja Luka, Bosnia and Herzegovina',
+                    
+                    # Izdavalac (Jelena)
+                    'izdavalac_naziv': 'TechSolutions Jelena Jovanović s.p.',
+                    'izdavalac_adresa': 'Cara Lazara 45',
+                    'izdavalac_mjesto': '78000 Banja Luka',
+                    'izdavalac_jib': '4512358270004',
+                    'izdavalac_iban': 'BA39 5620 0881 7270 9399',
+                    'izdavalac_racun': '562-008-81727093-99',
+                    
+                    # Primalac
+                    'primalac_naziv': f_data['primalac_naziv'],
+                    'primalac_adresa': f_data['primalac_adresa'],
+                    'primalac_mjesto': f_data['primalac_mjesto'],
+                    
+                    'valuta': 'USD',
+                    'status': 'paid',
                 }
             )
+            
+            # Dodaj stavku ako je faktura tek kreirana
+            if created:
+                StavkaFakture.objects.create(
+                    faktura=faktura,
+                    redni_broj=1,
+                    opis=f_data['opis'],
+                    jedinica_mjere='unit',
+                    kolicina=Decimal('1'),
+                    cijena_po_jedinici=Decimal(str(f_data['iznos'])),
+                    pdv_stopa=0
+                )
+                faktura.izracunaj_ukupno()
         
         # Email Inbox
         inbox_jelena = [
@@ -140,13 +178,11 @@ class Command(BaseCommand):
                 defaults={'iznos': Decimal(iznos)}
             )
         
-        # Email Inbox - NLB izvodi
+        # Email Inbox
         ana_inbox = [
             ('LECIC MIRJANA', 35, 'OBJAVA VELIKA ID 37146', date(2025, 12, 10), 95),
             ('PTT-RADENKO BRKIC', 20, 'OBJAVA ID 37125', date(2025, 12, 10), 96),
             ('PTT-GORAN ANDJELIC', 20, 'OBJAVA OSNOVNA ID 37181', date(2025, 12, 10), 92),
-            ('NEBOJSA SUSIC', 20, 'OBJAVA ID 37158', date(2025, 12, 3), 94),
-            ('BORILOVIC MIRJANA', 20, 'OBJAVA/OSNOVNA/ ID 36887', date(2025, 12, 3), 93),
         ]
         
         for klijent, iznos, svrha, datum_trans, confidence in ana_inbox:
@@ -162,18 +198,40 @@ class Command(BaseCommand):
                 }
             )
         
-        # Fakture
-        Faktura.objects.get_or_create(
-            korisnik=korisnik_ana,
-            broj='F001/25',
+        # Jedna test faktura
+        faktura_ana, created = Faktura.objects.get_or_create(
+            user=user_ana,
+            broj_fakture='F001/25',
             defaults={
-                'datum': date(2025, 1, 8),
-                'klijent': 'MEGA DOO Banja Luka',
-                'iznos': Decimal('6250.00'),
-                'status': 'Plaćena',
-                'opis': 'Business consulting'
+                'datum_izdavanja': date(2025, 1, 8),
+                'mjesto_izdavanja': 'Trebinje, Bosnia and Herzegovina',
+                
+                'izdavalac_naziv': 'Ana Anić PR',
+                'izdavalac_adresa': 'Svetosavska 12',
+                'izdavalac_mjesto': '89101 Trebinje',
+                'izdavalac_jib': '4512358270002',
+                'izdavalac_racun': '562-008-81727093-98',
+                
+                'primalac_naziv': 'MEGA DOO Banja Luka',
+                'primalac_adresa': 'Kralja Petra 25',
+                'primalac_mjesto': '78000 Banja Luka',
+                
+                'valuta': 'BAM',
+                'status': 'paid',
             }
         )
+        
+        if created:
+            StavkaFakture.objects.create(
+                faktura=faktura_ana,
+                redni_broj=1,
+                opis='Business consulting services',
+                jedinica_mjere='usluga',
+                kolicina=Decimal('1'),
+                cijena_po_jedinici=Decimal('6250.00'),
+                pdv_stopa=0
+            )
+            faktura_ana.izracunaj_ukupno()
         
         self.stdout.write(self.style.SUCCESS('  ✅ Ana kreirana!'))
         

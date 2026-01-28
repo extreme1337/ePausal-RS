@@ -1,144 +1,141 @@
 from django.contrib import admin
-from .models import *
+from .models import (
+    Korisnik, Prihod, Faktura, StavkaFakture,
+    Uplatnica, Bilans, EmailInbox, SystemLog, FailedRequest,
+    Currency, UserPreferences, AuditLog, PredictiveAnalytics,
+    GodisnjiIzvjestaj, EmailNotification, UploadedDocument, CalendarEvent
+)
+
+
+# ============================================
+# OSNOVNI MODELI
+# ============================================
 
 @admin.register(Korisnik)
 class KorisnikAdmin(admin.ModelAdmin):
-    list_display = ['ime', 'user', 'plan', 'jib', 'racun', 'registrovan']
+    list_display = ['ime', 'plan', 'jib', 'registrovan']
     list_filter = ['plan', 'registrovan']
-    search_fields = ['ime', 'jib', 'user__email']
-    readonly_fields = ['registrovan']
-    
-    fieldsets = (
-        ('Osnovni podaci', {
-            'fields': ('user', 'ime', 'plan')
-        }),
-        ('Finansijski podaci', {
-            'fields': ('jib', 'racun')
-        }),
-        ('Dodatno', {
-            'fields': ('registrovan',)
-        }),
-    )
+    search_fields = ['ime', 'jib', 'user__username', 'user__email']
+
 
 @admin.register(Prihod)
 class PrihodAdmin(admin.ModelAdmin):
     list_display = ['korisnik', 'mjesec', 'iznos', 'datum_kreiranja']
-    list_filter = ['mjesec', 'korisnik', 'datum_kreiranja']
-    search_fields = ['korisnik__ime', 'mjesec']
-    readonly_fields = ['datum_kreiranja']
+    list_filter = ['mjesec', 'datum_kreiranja']
+    search_fields = ['korisnik__ime']
     date_hierarchy = 'datum_kreiranja'
+
+
+# ============================================
+# FAKTURE - POJEDNOSTAVLJEN SISTEM
+# ============================================
+
+class StavkaFaktureInline(admin.TabularInline):
+    """Inline admin za stavke fakture"""
+    model = StavkaFakture
+    extra = 1
+    fields = ['redni_broj', 'opis', 'jedinica_mjere', 'kolicina', 'cijena_po_jedinici', 'pdv_stopa', 'ukupna_cijena']
+    readonly_fields = ['ukupna_cijena']
+
 
 @admin.register(Faktura)
 class FakturaAdmin(admin.ModelAdmin):
-    list_display = ['broj', 'korisnik', 'datum', 'klijent', 'iznos', 'status', 'datum_kreiranja']
-    list_filter = ['status', 'datum', 'korisnik']
-    search_fields = ['broj', 'klijent', 'korisnik__ime']
-    readonly_fields = ['datum_kreiranja', 'fajl']
-    date_hierarchy = 'datum'
+    list_display = ['broj_fakture', 'primalac_naziv', 'datum_izdavanja', 'ukupno_sa_pdv', 'status', 'created_at']
+    list_filter = ['status', 'datum_izdavanja', 'valuta']
+    search_fields = ['broj_fakture', 'primalac_naziv', 'izdavalac_naziv']
+    date_hierarchy = 'datum_izdavanja'
+    inlines = [StavkaFaktureInline]
     
     fieldsets = (
         ('Osnovni podaci', {
-            'fields': ('korisnik', 'broj', 'datum', 'klijent')
+            'fields': ('user', 'broj_fakture', 'datum_izdavanja', 'mjesto_izdavanja', 'status')
         }),
-        ('Finansijski podaci', {
-            'fields': ('iznos', 'status')
+        ('Izdavalac', {
+            'fields': ('izdavalac_naziv', 'izdavalac_adresa', 'izdavalac_mjesto', 'izdavalac_jib', 'izdavalac_iban', 'izdavalac_racun')
+        }),
+        ('Primalac', {
+            'fields': ('primalac_naziv', 'primalac_adresa', 'primalac_mjesto')
+        }),
+        ('Finansije', {
+            'fields': ('valuta', 'ukupno_bez_pdv', 'pdv_iznos', 'ukupno_sa_pdv', 'datum_placanja')
         }),
         ('Dodatno', {
-            'fields': ('opis', 'fajl', 'datum_kreiranja')
+            'fields': ('napomena',)
         }),
     )
+    
+    readonly_fields = ['ukupno_bez_pdv', 'pdv_iznos', 'ukupno_sa_pdv']
+    
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        obj.izracunaj_ukupno()
+
+
+@admin.register(StavkaFakture)
+class StavkaFaktureAdmin(admin.ModelAdmin):
+    list_display = ['faktura', 'redni_broj', 'opis', 'jedinica_mjere', 'kolicina', 'cijena_po_jedinici', 'ukupna_cijena_sa_pdv']
+    list_filter = ['faktura__datum_izdavanja', 'jedinica_mjere']
+    search_fields = ['opis', 'faktura__broj_fakture']
+
+
+# ============================================
+# UPLATNICE I BILANSI
+# ============================================
 
 @admin.register(Uplatnica)
 class UplatnicaAdmin(admin.ModelAdmin):
-    list_display = ['korisnik', 'datum', 'primalac', 'iznos', 'svrha', 'datum_kreiranja']
-    list_filter = ['primalac', 'datum', 'korisnik']
+    list_display = ['korisnik', 'datum', 'primalac', 'iznos', 'datum_kreiranja']
+    list_filter = ['primalac', 'datum']
     search_fields = ['korisnik__ime', 'svrha']
-    readonly_fields = ['datum_kreiranja', 'fajl']
     date_hierarchy = 'datum'
+
 
 @admin.register(Bilans)
 class BilansAdmin(admin.ModelAdmin):
-    list_display = ['korisnik', 'od_mjesec', 'do_mjesec', 'ukupan_prihod', 'neto', 'datum_kreiranja', 'datum_isteka', 'is_expired']
-    list_filter = ['korisnik', 'datum_kreiranja']
-    readonly_fields = ['datum_kreiranja', 'datum_isteka', 'fajl', 'days_until_expiry']
+    list_display = ['korisnik', 'od_mjesec', 'do_mjesec', 'ukupan_prihod', 'neto', 'datum_kreiranja', 'days_until_expiry']
+    list_filter = ['datum_kreiranja', 'korisnik__plan']
     search_fields = ['korisnik__ime']
-    
-    def is_expired(self, obj):
-        return obj.is_expired()
-    is_expired.boolean = True
-    is_expired.short_description = 'Istekao?'
-    
-    fieldsets = (
-        ('Period', {
-            'fields': ('korisnik', 'od_mjesec', 'do_mjesec')
-        }),
-        ('Finansijski podaci', {
-            'fields': ('ukupan_prihod', 'porez', 'doprinosi', 'neto')
-        }),
-        ('Fajl i datumi', {
-            'fields': ('fajl', 'datum_kreiranja', 'datum_isteka', 'days_until_expiry')
-        }),
-    )
+    date_hierarchy = 'datum_kreiranja'
+
 
 @admin.register(EmailInbox)
 class EmailInboxAdmin(admin.ModelAdmin):
-    list_display = ['korisnik', 'klijent', 'iznos', 'confidence', 'potvrdjeno', 'datum_transakcije', 'datum_kreiranja']
-    list_filter = ['potvrdjeno', 'korisnik', 'datum_transakcije']
-    search_fields = ['klijent', 'svrha', 'korisnik__ime']
-    readonly_fields = ['datum_kreiranja']
+    list_display = ['korisnik', 'klijent', 'iznos', 'datum_transakcije', 'confidence', 'potvrdjeno']
+    list_filter = ['potvrdjeno', 'datum_transakcije']
+    search_fields = ['klijent', 'from_email', 'korisnik__ime']
     date_hierarchy = 'datum_transakcije'
-    
-    actions = ['mark_as_confirmed']
-    
-    def mark_as_confirmed(self, request, queryset):
-        count = queryset.update(potvrdjeno=True)
-        self.message_user(request, f'{count} transakcija potvrđeno.')
-    mark_as_confirmed.short_description = 'Potvrdi odabrane transakcije'
+
+
+# ============================================
+# SYSTEM LOGS
+# ============================================
 
 @admin.register(SystemLog)
 class SystemLogAdmin(admin.ModelAdmin):
-    list_display = ['timestamp', 'user', 'action', 'status', 'ip_address']
+    list_display = ['user', 'action', 'status', 'ip_address', 'timestamp']
     list_filter = ['status', 'action', 'timestamp']
-    search_fields = ['user__email', 'action', 'details']
-    readonly_fields = ['timestamp', 'user', 'action', 'status', 'ip_address', 'details']
+    search_fields = ['user__username', 'action', 'ip_address']
     date_hierarchy = 'timestamp'
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False
+    readonly_fields = ['user', 'action', 'status', 'ip_address', 'timestamp', 'details']
+
 
 @admin.register(FailedRequest)
 class FailedRequestAdmin(admin.ModelAdmin):
-    list_display = ['timestamp', 'user', 'action', 'error_short', 'retryable']
-    list_filter = ['retryable', 'timestamp', 'action']
-    search_fields = ['user__email', 'action', 'error']
-    readonly_fields = ['timestamp']
+    list_display = ['user', 'action', 'retryable', 'timestamp']
+    list_filter = ['retryable', 'timestamp']
+    search_fields = ['user__username', 'action', 'error']
     date_hierarchy = 'timestamp'
-    
-    def error_short(self, obj):
-        return obj.error[:50] + '...' if len(obj.error) > 50 else obj.error
-    error_short.short_description = 'Error'
-    
-    actions = ['mark_as_resolved']
-    
-    def mark_as_resolved(self, request, queryset):
-        count = queryset.count()
-        queryset.delete()
-        self.message_user(request, f'{count} zahtjeva riješeno.')
-    mark_as_resolved.short_description = 'Označi kao riješeno'
+
 
 # ============================================
-# ENHANCED MODELI - ADMIN
+# ENHANCED MODELI
 # ============================================
 
 @admin.register(Currency)
 class CurrencyAdmin(admin.ModelAdmin):
     list_display = ['code', 'name', 'rate_to_km', 'last_updated']
-    list_filter = ['code']
     search_fields = ['code', 'name']
-    readonly_fields = ['last_updated']
+
 
 @admin.register(UserPreferences)
 class UserPreferencesAdmin(admin.ModelAdmin):
@@ -146,52 +143,49 @@ class UserPreferencesAdmin(admin.ModelAdmin):
     list_filter = ['language', 'theme', 'email_notifications']
     search_fields = ['korisnik__ime']
 
+
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ['timestamp', 'user', 'model_name', 'object_id', 'action', 'ip_address']
+    list_display = ['user', 'model_name', 'object_id', 'action', 'timestamp']
     list_filter = ['action', 'model_name', 'timestamp']
-    search_fields = ['user__email', 'model_name']
-    readonly_fields = ['timestamp', 'user', 'model_name', 'object_id', 'action', 'old_value', 'new_value', 'ip_address']
+    search_fields = ['user__username', 'model_name']
     date_hierarchy = 'timestamp'
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False
+    readonly_fields = ['user', 'model_name', 'object_id', 'action', 'old_value', 'new_value', 'ip_address', 'timestamp']
+
 
 @admin.register(PredictiveAnalytics)
 class PredictiveAnalyticsAdmin(admin.ModelAdmin):
     list_display = ['korisnik', 'mjesec', 'predicted_income', 'confidence', 'actual_income', 'accuracy']
-    list_filter = ['korisnik', 'mjesec']
+    list_filter = ['mjesec', 'created_at']
     search_fields = ['korisnik__ime']
-    readonly_fields = ['created_at']
+
 
 @admin.register(GodisnjiIzvjestaj)
 class GodisnjiIzvjestajAdmin(admin.ModelAdmin):
-    list_display = ['korisnik', 'godina', 'ukupan_prihod', 'neto_dohodak', 'broj_faktura', 'datum_kreiranja']
-    list_filter = ['godina', 'korisnik']
+    list_display = ['korisnik', 'godina', 'ukupan_prihod', 'ukupan_porez', 'neto_dohodak', 'broj_faktura']
+    list_filter = ['godina']
     search_fields = ['korisnik__ime']
-    readonly_fields = ['datum_kreiranja', 'fajl_pdf']
+
 
 @admin.register(EmailNotification)
 class EmailNotificationAdmin(admin.ModelAdmin):
     list_display = ['korisnik', 'notification_type', 'scheduled_date', 'sent', 'sent_at']
     list_filter = ['notification_type', 'sent', 'scheduled_date']
     search_fields = ['korisnik__ime', 'email_subject']
-    readonly_fields = ['sent_at']
     date_hierarchy = 'scheduled_date'
+
 
 @admin.register(UploadedDocument)
 class UploadedDocumentAdmin(admin.ModelAdmin):
-    list_display = ['original_filename', 'korisnik', 'document_type', 'processed', 'uploaded_at']
+    list_display = ['korisnik', 'document_type', 'original_filename', 'processed', 'uploaded_at']
     list_filter = ['document_type', 'processed', 'uploaded_at']
-    search_fields = ['original_filename', 'korisnik__ime']
-    readonly_fields = ['uploaded_at', 'extracted_data']
+    search_fields = ['korisnik__ime', 'original_filename']
+    date_hierarchy = 'uploaded_at'
+
 
 @admin.register(CalendarEvent)
 class CalendarEventAdmin(admin.ModelAdmin):
-    list_display = ['title', 'korisnik', 'event_type', 'start_date', 'all_day', 'reminder_sent']
+    list_display = ['korisnik', 'event_type', 'title', 'start_date', 'all_day', 'reminder_sent']
     list_filter = ['event_type', 'all_day', 'reminder_sent', 'start_date']
-    search_fields = ['title', 'description', 'korisnik__ime']
+    search_fields = ['korisnik__ime', 'title', 'description']
     date_hierarchy = 'start_date'

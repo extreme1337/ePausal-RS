@@ -1,3 +1,4 @@
+from pyexpat.errors import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
@@ -10,25 +11,40 @@ from django.core.files.base import ContentFile
 from decimal import Decimal
 from .models import *
 from .utils import (
-    generate_invoice_doc, generate_payment_slip_png, generate_bilans_csv,
-    generate_income_predictions, get_chart_data_prihodi, 
-    send_payment_reminder, check_rate_limit, log_audit,
-    process_uploaded_pdf, generate_godisnji_izvjestaj_pdf,
-    create_payment_deadline_events, convert_currency, update_exchange_rates
+    generate_invoice_doc,
+    generate_bilans_csv,
+    generate_income_predictions,
+    get_chart_data_prihodi,
+    send_payment_reminder,
+    check_rate_limit,
+    log_audit,
+    process_uploaded_pdf,
+    generate_godisnji_izvjestaj_pdf,
+    create_payment_deadline_events,
+    convert_currency,
+    update_exchange_rates,
+    parse_bank_statement_pdf,
+    get_client_ip,
 )
 import json
+
+from django.contrib import messages
+from django.db import transaction
+from .models import Faktura, StavkaFakture
+from datetime import date
 
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
 
+
 def get_client_ip(request):
     """Dobij IP adresu klijenta"""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
+        ip = x_forwarded_for.split(",")[0]
     else:
-        ip = request.META.get('REMOTE_ADDR')
+        ip = request.META.get("REMOTE_ADDR")
     return ip
 
 
@@ -36,255 +52,314 @@ def get_client_ip(request):
 # PUBLIC VIEWS
 # ============================================
 
+
 def landing(request):
     """Landing page sa pricing"""
     plans = [
-        {'name': 'Starter', 'price': 15, 'features': ['Osnovna evidencija', 'Do 50 prihoda/mj', 'Fakture', 'Email podrška']},
-        {'name': 'Professional', 'price': 29, 'features': ['Email inbox AI', 'Neograničeno', 'Uplatnice', 'Prioritet']},
-        {'name': 'Business', 'price': 49, 'features': ['API pristup', 'Bilans', 'Custom izvještaji', 'Multi korisnici']},
-        {'name': 'Enterprise', 'price': 99, 'features': ['Dedicated podrška', 'Integracije', 'SLA', 'White label']}
+        {
+            "name": "Starter",
+            "price": 15,
+            "features": [
+                "Osnovna evidencija",
+                "Do 50 prihoda/mj",
+                "Fakture",
+                "Email podrška",
+            ],
+        },
+        {
+            "name": "Professional",
+            "price": 29,
+            "features": ["Email inbox AI", "Neograničeno", "Uplatnice", "Prioritet"],
+        },
+        {
+            "name": "Business",
+            "price": 49,
+            "features": [
+                "API pristup",
+                "Bilans",
+                "Custom izvještaji",
+                "Multi korisnici",
+            ],
+        },
+        {
+            "name": "Enterprise",
+            "price": 99,
+            "features": ["Dedicated podrška", "Integracije", "SLA", "White label"],
+        },
     ]
-    
+
     promo_codes = {
-        'EARLYBIRD100': {'discount': 1.0, 'description': '6 mjeseci BESPLATNO'},
-        'REFERRAL20': {'discount': 0.2, 'description': '20% OFF zauvijek'},
-        'FRIEND50': {'discount': 0.5, 'description': '50% OFF 3 mjeseca'},
-        'LAUNCH2026': {'discount': 0.3, 'description': '30% OFF 6 mjeseci'}
+        "EARLYBIRD100": {"discount": 1.0, "description": "6 mjeseci BESPLATNO"},
+        "REFERRAL20": {"discount": 0.2, "description": "20% OFF zauvijek"},
+        "FRIEND50": {"discount": 0.5, "description": "50% OFF 3 mjeseca"},
+        "LAUNCH2026": {"discount": 0.3, "description": "30% OFF 6 mjeseci"},
     }
-    
-    return render(request, 'core/landing.html', {'plans': plans, 'promo_codes': promo_codes})
+
+    return render(
+        request, "core/landing.html", {"plans": plans, "promo_codes": promo_codes}
+    )
 
 
 def user_login(request):
     """Login stranica"""
-    if request.method == 'POST':
-        email = request.POST.get('email', '').strip().lower()
-        password = request.POST.get('password', '').strip()
-        
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip().lower()
+        password = request.POST.get("password", "").strip()
+
         user = authenticate(request, username=email, password=password)
-        
+
         if user:
             auth_login(request, user)
-            
+
             SystemLog.objects.create(
                 user=user,
-                action='LOGIN',
-                status='success',
-                ip_address=get_client_ip(request)
+                action="LOGIN",
+                status="success",
+                ip_address=get_client_ip(request),
             )
-            
+
             if user.is_staff:
-                return redirect('admin_panel')
-            return redirect('dashboard')
+                return redirect("admin_panel")
+            return redirect("dashboard")
         else:
-            return render(request, 'core/login.html', {'error': 'Pogrešan email ili lozinka'})
-    
-    return render(request, 'core/login.html')
+            return render(
+                request, "core/login.html", {"error": "Pogrešan email ili lozinka"}
+            )
+
+    return render(request, "core/login.html")
 
 
 def user_logout(request):
     """Logout"""
     auth_logout(request)
-    return redirect('landing')
+    return redirect("landing")
 
 
 # ============================================
 # LANGUAGE & PREFERENCES
 # ============================================
 
+
 @login_required
 def change_language(request, lang_code):
     """Promijeni jezik aplikacije"""
-    if lang_code in ['sr', 'en']:
+    if lang_code in ["sr", "en"]:
         activate(lang_code)
-        request.session['django_language'] = lang_code
-        
-        prefs, created = UserPreferences.objects.get_or_create(korisnik=request.user.korisnik)
+        request.session["django_language"] = lang_code
+
+        prefs, created = UserPreferences.objects.get_or_create(
+            korisnik=request.user.korisnik
+        )
         prefs.language = lang_code
         prefs.save()
-    
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+    return redirect(request.META.get("HTTP_REFERER", "/"))
 
 
 @login_required
 def preferences_view(request):
     """Korisničke preferencije"""
-    prefs, created = UserPreferences.objects.get_or_create(korisnik=request.user.korisnik)
-    
-    if request.method == 'POST':
-        prefs.language = request.POST.get('language', 'sr')
-        prefs.theme = request.POST.get('theme', 'light')
-        prefs.email_notifications = request.POST.get('email_notifications') == 'on'
-        prefs.payment_reminders = request.POST.get('payment_reminders') == 'on'
+    prefs, created = UserPreferences.objects.get_or_create(
+        korisnik=request.user.korisnik
+    )
+
+    if request.method == "POST":
+        prefs.language = request.POST.get("language", "sr")
+        prefs.theme = request.POST.get("theme", "light")
+        prefs.email_notifications = request.POST.get("email_notifications") == "on"
+        prefs.payment_reminders = request.POST.get("payment_reminders") == "on"
         prefs.save()
-        
-        return JsonResponse({'success': True})
+
+        return JsonResponse({"success": True})
 
 
 # ============================================
 # REGISTRATION FLOW
 # ============================================
 
+
 def features_page(request):
     """Features page"""
-    return render(request, 'core/features.html')
+    return render(request, "core/features.html")
 
 
 def register_choose_plan(request):
     """Step 1: Odabir plana"""
     plans = [
-        {'name': 'Starter', 'price': 15, 'features': ['Osnovna evidencija', 'Fakture', 'Email podrška']},
-        {'name': 'Professional', 'price': 29, 'features': ['Email inbox AI', 'Uplatnice', 'Prioritet']},
-        {'name': 'Business', 'price': 49, 'features': ['API pristup', 'Bilans', 'Custom izvještaji']},
-        {'name': 'Enterprise', 'price': 99, 'features': ['Dedicated podrška', 'Integracije', 'SLA']}
+        {
+            "name": "Starter",
+            "price": 15,
+            "features": ["Osnovna evidencija", "Fakture", "Email podrška"],
+        },
+        {
+            "name": "Professional",
+            "price": 29,
+            "features": ["Email inbox AI", "Uplatnice", "Prioritet"],
+        },
+        {
+            "name": "Business",
+            "price": 49,
+            "features": ["API pristup", "Bilans", "Custom izvještaji"],
+        },
+        {
+            "name": "Enterprise",
+            "price": 99,
+            "features": ["Dedicated podrška", "Integracije", "SLA"],
+        },
     ]
-    return render(request, 'core/register_choose_plan.html', {'plans': plans})
+    return render(request, "core/register_choose_plan.html", {"plans": plans})
 
 
 def register(request):
     """Step 2: Registracija"""
-    selected_plan = request.GET.get('plan', 'Professional')
-    plan_prices = {'Starter': 15, 'Professional': 29, 'Business': 49, 'Enterprise': 99}
-    
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-        password_confirm = request.POST.get('password_confirm')
-        
+    selected_plan = request.GET.get("plan", "Professional")
+    plan_prices = {"Starter": 15, "Professional": 29, "Business": 49, "Enterprise": 99}
+
+    if request.method == "POST":
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        password_confirm = request.POST.get("password_confirm")
+
         if password != password_confirm:
-            return render(request, 'core/register.html', {
-                'error': 'Lozinke se ne poklapaju',
-                'selected_plan': selected_plan
-            })
-        
+            return render(
+                request,
+                "core/register.html",
+                {"error": "Lozinke se ne poklapaju", "selected_plan": selected_plan},
+            )
+
         if User.objects.filter(username=email).exists():
-            return render(request, 'core/register.html', {
-                'error': 'Email već postoji',
-                'selected_plan': selected_plan
-            })
-        
-        request.session['registration_data'] = {
-            'ime': request.POST.get('ime'),
-            'email': email,
-            'password': password,
-            'jib': request.POST.get('jib'),
-            'racun': request.POST.get('racun'),
-            'plan': request.POST.get('plan')
+            return render(
+                request,
+                "core/register.html",
+                {"error": "Email već postoji", "selected_plan": selected_plan},
+            )
+
+        request.session["registration_data"] = {
+            "ime": request.POST.get("ime"),
+            "email": email,
+            "password": password,
+            "jib": request.POST.get("jib"),
+            "racun": request.POST.get("racun"),
+            "plan": request.POST.get("plan"),
         }
-        
-        return redirect('payment')
-    
-    return render(request, 'core/register.html', {
-        'selected_plan': selected_plan,
-        'plan_price': plan_prices.get(selected_plan, 29)
-    })
+
+        return redirect("payment")
+
+    return render(
+        request,
+        "core/register.html",
+        {
+            "selected_plan": selected_plan,
+            "plan_price": plan_prices.get(selected_plan, 29),
+        },
+    )
 
 
 def payment(request):
     """Step 3: Plaćanje"""
-    reg_data = request.session.get('registration_data')
+    reg_data = request.session.get("registration_data")
     if not reg_data:
-        return redirect('register_choose_plan')
-    
-    plan_prices = {'Starter': 15, 'Professional': 29, 'Business': 49, 'Enterprise': 99}
-    plan_name = reg_data.get('plan', 'Professional')
+        return redirect("register_choose_plan")
+
+    plan_prices = {"Starter": 15, "Professional": 29, "Business": 49, "Enterprise": 99}
+    plan_name = reg_data.get("plan", "Professional")
     plan_price = plan_prices.get(plan_name, 29)
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         user = User.objects.create_user(
-            username=reg_data['email'],
-            email=reg_data['email'],
-            password=reg_data['password']
+            username=reg_data["email"],
+            email=reg_data["email"],
+            password=reg_data["password"],
         )
-        
+
         korisnik = Korisnik.objects.create(
             user=user,
-            ime=reg_data['ime'],
+            ime=reg_data["ime"],
             plan=plan_name,
-            jib=reg_data['jib'],
-            racun=reg_data['racun']
+            jib=reg_data["jib"],
+            racun=reg_data["racun"],
         )
-        
+
         UserPreferences.objects.create(
-            korisnik=korisnik,
-            email_notifications=True,
-            payment_reminders=True
+            korisnik=korisnik, email_notifications=True, payment_reminders=True
         )
-        
+
         trial_end_date = timezone.now() + timedelta(days=14)
         EmailNotification.objects.create(
             korisnik=korisnik,
-            notification_type='payment_reminder',
+            notification_type="payment_reminder",
             scheduled_date=trial_end_date - timedelta(days=2),
-            email_subject='Trial period ističe za 2 dana',
-            email_body=f'Prvi charge: {plan_price} KM'
+            email_subject="Trial period ističe za 2 dana",
+            email_body=f"Prvi charge: {plan_price} KM",
         )
-        
-        auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-        del request.session['registration_data']
-        
-        request.session['registration_success'] = {
-            'plan_name': plan_name,
-            'plan_price': plan_price,
-            'user_email': user.email
+
+        auth_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+        del request.session["registration_data"]
+
+        request.session["registration_success"] = {
+            "plan_name": plan_name,
+            "plan_price": plan_price,
+            "user_email": user.email,
         }
-        
-        return redirect('registration_success')
-    
-    return render(request, 'core/payment.html', {
-        'plan_name': plan_name,
-        'plan_price': plan_price
-    })
+
+        return redirect("registration_success")
+
+    return render(
+        request, "core/payment.html", {"plan_name": plan_name, "plan_price": plan_price}
+    )
 
 
 def registration_success(request):
     """Success page"""
-    success_data = request.session.get('registration_success')
+    success_data = request.session.get("registration_success")
     if not success_data:
-        return redirect('landing')
-    
+        return redirect("landing")
+
     context = success_data
-    del request.session['registration_success']
-    
-    return render(request, 'core/registration_success.html', context)
+    del request.session["registration_success"]
+
+    return render(request, "core/registration_success.html", context)
 
 
 def cancel_subscription(request):
     """Otkaži pretplatu"""
-    if request.method == 'POST' and request.user.is_authenticated:
+    if request.method == "POST" and request.user.is_authenticated:
         SystemLog.objects.create(
-            user=request.user,
-            action='CANCEL_SUBSCRIPTION',
-            status='success'
+            user=request.user, action="CANCEL_SUBSCRIPTION", status="success"
         )
-        return JsonResponse({'success': True})
-    return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
-    return render(request, 'core/preferences.html', {'prefs': prefs})
+        return JsonResponse({"success": True})
+    return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    return render(request, "core/preferences.html", {"prefs": prefs})
 
 
 # ============================================
 # DASHBOARD
 # ============================================
 
+
 @login_required
 def dashboard(request):
     """Enhanced dashboard sa Chart.js i AI predikcijama"""
     korisnik = request.user.korisnik
-    
+
     # Statistike
     prihodi = korisnik.prihodi.all()
     ukupan_prihod = sum([p.iznos for p in prihodi])
     porez = ukupan_prihod * Decimal(str(settings.STOPA_POREZA))
-    doprinosi = Decimal(str(settings.PROSJECNA_BRUTO_PLATA)) * Decimal(str(settings.STOPA_DOPRINOSA)) * len(prihodi)
+    doprinosi = (
+        Decimal(str(settings.PROSJECNA_BRUTO_PLATA))
+        * Decimal(str(settings.STOPA_DOPRINOSA))
+        * len(prihodi)
+    )
     neto = ukupan_prihod - porez - doprinosi
-    
+
     # Chart data
     chart_data = get_chart_data_prihodi(korisnik)
-    
+
     # AI Predictions
     predictions = generate_income_predictions(korisnik)
-    
+
     if predictions:
         pred_labels = [p.mjesec for p in predictions]
         pred_values = [float(p.predicted_income) for p in predictions]
@@ -293,259 +368,533 @@ def dashboard(request):
         pred_labels = []
         pred_values = []
         pred_confidence = []
-    
+
     context = {
-        'korisnik': korisnik,
-        'stats': {
-            'ukupno': ukupan_prihod,
-            'porez': porez,
-            'doprinosi': doprinosi,
-            'neto': neto
+        "korisnik": korisnik,
+        "stats": {
+            "ukupno": ukupan_prihod,
+            "porez": porez,
+            "doprinosi": doprinosi,
+            "neto": neto,
         },
-        'chart_data': json.dumps(chart_data),
-        'predictions': predictions,
-        'pred_labels': json.dumps(pred_labels),
-        'pred_values': json.dumps(pred_values),
-        'pred_confidence': json.dumps(pred_confidence),
-        'inbox_count': korisnik.inbox.filter(potvrdjeno=False).count(),
-        'fakture_count': korisnik.fakture.count(),
-        'uplatnice_count': korisnik.uplatnice.count()
+        "chart_data": json.dumps(chart_data),
+        "predictions": predictions,
+        "pred_labels": json.dumps(pred_labels),
+        "pred_values": json.dumps(pred_values),
+        "pred_confidence": json.dumps(pred_confidence),
+        "inbox_count": korisnik.inbox.filter(potvrdjeno=False).count(),
+        "fakture_count": request.user.fakture.count(),
+        "uplatnice_count": korisnik.uplatnice.count(),
     }
-    
-    return render(request, 'core/dashboard.html', context)
+
+    return render(request, "core/dashboard.html", context)
 
 
 # ============================================
 # PRIHODI I RASHODI
 # ============================================
 
+
 @login_required
 def prihodi_view(request):
     """Prikaz prihoda i rashoda"""
     korisnik = request.user.korisnik
     prihodi = korisnik.prihodi.all()
-    
+
     mjesecni_podaci = []
-    ukupan_prihod = Decimal('0')
-    ukupan_porez = Decimal('0')
-    ukupni_doprinosi = Decimal('0')
-    
+    ukupan_prihod = Decimal("0")
+    ukupan_porez = Decimal("0")
+    ukupni_doprinosi = Decimal("0")
+
     for prihod in prihodi:
         porez = prihod.iznos * Decimal(str(settings.STOPA_POREZA))
-        doprinosi = Decimal(str(settings.PROSJECNA_BRUTO_PLATA)) * Decimal(str(settings.STOPA_DOPRINOSA))
+        doprinosi = Decimal(str(settings.PROSJECNA_BRUTO_PLATA)) * Decimal(
+            str(settings.STOPA_DOPRINOSA)
+        )
         ukupni_rashodi = porez + doprinosi
         neto = prihod.iznos - ukupni_rashodi
-        
-        mjesecni_podaci.append({
-            'mjesec': prihod.mjesec,
-            'prihod': prihod.iznos,
-            'porez': porez,
-            'doprinosi': doprinosi,
-            'rashodi': ukupni_rashodi,
-            'neto': neto
-        })
-        
+
+        mjesecni_podaci.append(
+            {
+                "mjesec": prihod.mjesec,
+                "prihod": prihod.iznos,
+                "porez": porez,
+                "doprinosi": doprinosi,
+                "rashodi": ukupni_rashodi,
+                "neto": neto,
+            }
+        )
+
         ukupan_prihod += prihod.iznos
         ukupan_porez += porez
         ukupni_doprinosi += doprinosi
-    
+
     context = {
-        'mjesecni_podaci': mjesecni_podaci,
-        'totali': {
-            'prihod': ukupan_prihod,
-            'porez': ukupan_porez,
-            'doprinosi': ukupni_doprinosi,
-            'rashodi': ukupan_porez + ukupni_doprinosi,
-            'neto': ukupan_prihod - ukupan_porez - ukupni_doprinosi
-        }
+        "mjesecni_podaci": mjesecni_podaci,
+        "totali": {
+            "prihod": ukupan_prihod,
+            "porez": ukupan_porez,
+            "doprinosi": ukupni_doprinosi,
+            "rashodi": ukupan_porez + ukupni_doprinosi,
+            "neto": ukupan_prihod - ukupan_porez - ukupni_doprinosi,
+        },
     }
-    
-    return render(request, 'core/prihodi.html', context)
+
+    return render(request, "core/prihodi.html", context)
 
 
 # ============================================
 # EMAIL INBOX
 # ============================================
 
+
 @login_required
 def inbox_view(request):
     """Email inbox - AI parsing"""
     korisnik = request.user.korisnik
-    
-    if korisnik.plan not in ['Professional', 'Business', 'Enterprise']:
-        return redirect('dashboard')
-    
-    if request.method == 'POST' and 'confirm_all' in request.POST:
+
+    if korisnik.plan not in ["Professional", "Business", "Enterprise"]:
+        return redirect("dashboard")
+
+    if request.method == "POST" and "confirm_all" in request.POST:
         inbox_items = korisnik.inbox.filter(potvrdjeno=False)
         count = inbox_items.count()
-        
+
         for item in inbox_items:
             item.potvrdjeno = True
             item.save()
-        
+
         SystemLog.objects.create(
             user=request.user,
-            action='EMAIL_IMPORT',
-            status='success',
+            action="EMAIL_IMPORT",
+            status="success",
             ip_address=get_client_ip(request),
-            details=f'Uvezeno {count} transakcija'
+            details=f"Uvezeno {count} transakcija",
         )
-        
-        return JsonResponse({'success': True, 'count': count})
-    
+
+        return JsonResponse({"success": True, "count": count})
+
     inbox = korisnik.inbox.filter(potvrdjeno=False)
-    return render(request, 'core/inbox.html', {'inbox': inbox})
+    return render(request, "core/inbox.html", {"inbox": inbox})
 
 
 # ============================================
 # FAKTURE
 # ============================================
+@login_required
+@transaction.atomic
+def faktura_dodaj(request):
+    """Kreiranje nove fakture - direktan unos"""
+    if request.method == "POST":
+        try:
+            # Osnovni podaci
+            faktura = Faktura.objects.create(
+                user=request.user,
+                broj_fakture=request.POST.get("broj_fakture"),
+                datum_izdavanja=request.POST.get("datum_izdavanja"),
+                mjesto_izdavanja=request.POST.get("mjesto_izdavanja", ""),
+                valuta="USD",
+                status="draft",
+                # Izdavalac podaci - direktna polja
+                izdavalac_naziv=request.POST.get("izdavalac_naziv"),
+                izdavalac_adresa=request.POST.get("izdavalac_adresa"),
+                izdavalac_mjesto=request.POST.get("izdavalac_mjesto"),
+                izdavalac_jib=request.POST.get("izdavalac_jib", ""),
+                izdavalac_iban=request.POST.get("izdavalac_iban", ""),
+                izdavalac_racun=request.POST.get("izdavalac_racun", ""),
+                # Primalac podaci - direktna polja
+                primalac_naziv=request.POST.get("primalac_naziv"),
+                primalac_adresa=request.POST.get("primalac_adresa"),
+                primalac_mjesto=request.POST.get("primalac_mjesto"),
+            )
+
+            # Dodaj stavke
+            i = 0
+            while f"stavke[{i}][opis]" in request.POST:
+                StavkaFakture.objects.create(
+                    faktura=faktura,
+                    redni_broj=i + 1,
+                    opis=request.POST.get(f"stavke[{i}][opis]"),
+                    jedinica_mjere=request.POST.get(f"stavke[{i}][jedinica]", "unit"),
+                    kolicina=Decimal(request.POST.get(f"stavke[{i}][kolicina]", "0")),
+                    cijena_po_jedinici=Decimal(
+                        request.POST.get(f"stavke[{i}][cijena]", "0")
+                    ),
+                    pdv_stopa=0,  # Bez PDV-a za USD fakture
+                )
+                i += 1
+
+            # Izračunaj ukupno
+            faktura.izracunaj_ukupno()
+
+            messages.success(
+                request, f"Faktura {faktura.broj_fakture} je uspješno kreirana!"
+            )
+            return redirect("faktura_detalji", faktura_id=faktura.id)
+
+        except Exception as e:
+            messages.error(request, f"Greška pri kreiranju fakture: {str(e)}")
+
+    return render(
+        request, "core/faktura_dodaj.html", {"today": date.today().strftime("%Y-%m-%d")}
+    )
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_invoice_status(request, faktura_id):
+    try:
+        # 1. Izvlačenje podataka iz request body-ja
+        data = json.loads(request.body)
+        novi_status = data.get("status")
+
+        # 2. Pronalazak fakture (provjera da pripada korisniku)
+        # Napomena: U modelu ti je polje 'user', ne 'korisnik'
+        faktura = get_object_or_404(Faktura, id=faktura_id, user=request.user)
+
+        # 3. Validacija statusa prema STATUS_CHOICES u modelu
+        validni_statusi = [choice[0] for choice in Faktura.STATUS_CHOICES]
+
+        if novi_status in validni_statusi:
+            faktura.status = novi_status
+            faktura.save()
+            return JsonResponse({"success": True})
+        else:
+            return JsonResponse(
+                {"success": False, "error": "Nevalidan status"}, status=400
+            )
+
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
 
 @login_required
 def fakture_view(request):
-    """Prikaz i kreiranje faktura"""
-    korisnik = request.user.korisnik
-    
-    if request.method == 'POST':
-        # Rate limiting check
-        allowed, error = check_rate_limit(request.user, 'GENERATE_INVOICE', limit=10, period_minutes=60)
-        if not allowed:
-            return JsonResponse({'error': error}, status=429)
-        
-        faktura = Faktura.objects.create(
-            korisnik=korisnik,
-            broj=request.POST.get('broj'),
-            datum=request.POST.get('datum'),
-            klijent=request.POST.get('klijent'),
-            iznos=Decimal(request.POST.get('iznos')),
-            opis=request.POST.get('opis', '')
-        )
-        
-        # Generiši Word dokument
-        doc_file = generate_invoice_doc(faktura, korisnik)
-        faktura.fajl = doc_file
-        faktura.save()
-        
-        # Audit log
-        log_audit(
-            user=request.user,
-            model_name='Faktura',
-            object_id=faktura.id,
-            action='CREATE',
-            new_value={'broj': faktura.broj, 'klijent': faktura.klijent, 'iznos': str(faktura.iznos)},
-            request=request
-        )
-        
-        SystemLog.objects.create(
-            user=request.user,
-            action='GENERATE_INVOICE',
-            status='success',
-            ip_address=get_client_ip(request)
-        )
-        
-        return JsonResponse({'success': True, 'file_url': faktura.fajl.url})
-    
-    fakture = korisnik.fakture.all()
-    return render(request, 'core/fakture.html', {'fakture': fakture})
+    """Lista faktura + kreiranje nove"""
+    if request.method == "POST":
+        try:
+            # Osnovni podaci
+            faktura = Faktura.objects.create(
+                user=request.user,
+                broj_fakture=request.POST.get("broj_fakture"),
+                datum_izdavanja=request.POST.get("datum_izdavanja"),
+                mjesto_izdavanja=request.POST.get("mjesto_izdavanja", ""),
+                # Izdavalac
+                izdavalac_naziv=request.POST.get("izdavalac_naziv"),
+                izdavalac_adresa=request.POST.get("izdavalac_adresa"),
+                izdavalac_mjesto=request.POST.get("izdavalac_mjesto"),
+                izdavalac_jib=request.POST.get("izdavalac_jib", ""),
+                izdavalac_iban=request.POST.get("izdavalac_iban", ""),
+                izdavalac_racun=request.POST.get("izdavalac_racun", ""),
+                # Primalac
+                primalac_naziv=request.POST.get("primalac_naziv"),
+                primalac_adresa=request.POST.get("primalac_adresa"),
+                primalac_mjesto=request.POST.get("primalac_mjesto"),
+                valuta="USD",
+                status="draft",
+            )
+
+            # Dodaj stavke
+            i = 0
+            while f"stavke[{i}][opis]" in request.POST:
+                opis = request.POST.get(f"stavke[{i}][opis]")
+                jedinica = request.POST.get(f"stavke[{i}][jedinica]", "unit")
+                kolicina_str = request.POST.get(f"stavke[{i}][kolicina]")
+                cijena_str = request.POST.get(f"stavke[{i}][cijena]")
+
+                # Validacija - preskoči prazne stavke
+                if not kolicina_str or not cijena_str:
+                    i += 1
+                    continue
+
+                StavkaFakture.objects.create(
+                    faktura=faktura,
+                    redni_broj=i + 1,
+                    opis=opis,
+                    jedinica_mjere=jedinica,
+                    kolicina=Decimal(kolicina_str),
+                    cijena_po_jedinici=Decimal(cijena_str),
+                    pdv_stopa=0,
+                )
+                i += 1
+
+            # Izračunaj ukupno
+            faktura.izracunaj_ukupno()
+
+            messages.success(
+                request, f"Faktura {faktura.broj_fakture} je uspješno kreirana!"
+            )
+
+            # Redirect na download
+            return redirect("download_invoice", faktura_id=faktura.id)
+
+        except Exception as e:
+            messages.error(request, f"Greška: {str(e)}")
+
+    # GET - prikaži listu
+    fakture = Faktura.objects.filter(user=request.user).order_by("-datum_izdavanja")
+
+    return render(request, "core/fakture.html", {"fakture": fakture})
 
 
 @login_required
 def download_invoice(request, faktura_id):
-    """Preuzmi postojeću fakturu"""
-    faktura = get_object_or_404(Faktura, id=faktura_id, korisnik=request.user.korisnik)
-    
-    if faktura.fajl:
-        return FileResponse(faktura.fajl.open('rb'), as_attachment=True)
-    else:
-        doc_file = generate_invoice_doc(faktura, request.user.korisnik)
-        faktura.fajl = doc_file
-        faktura.save()
-        return FileResponse(faktura.fajl.open('rb'), as_attachment=True)
+    """Preuzmi fakturu kao Word (HTML) dokument"""
+    faktura = get_object_or_404(Faktura, id=faktura_id, user=request.user)
+
+    # Generiši Word dokument
+    from .utils import generate_invoice_doc
+
+    html_content = generate_invoice_doc(faktura)
+
+    # Vrati kao HTML fajl (može se otvoriti u Word-u)
+    response = HttpResponse(html_content, content_type="application/msword")
+    filename = f'faktura_{faktura.broj_fakture.replace("/", "-")}.doc'
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    return response
 
 
 # ============================================
 # UPLATNICE
 # ============================================
 
+
 @login_required
 def uplatnice_view(request):
     """Prikaz i kreiranje uplatnica"""
     korisnik = request.user.korisnik
-    
-    if request.method == 'POST':
+
+    if request.method == "POST":
         uplatnica = Uplatnica.objects.create(
             korisnik=korisnik,
             datum=timezone.now().date(),
-            primalac=request.POST.get('primalac'),
-            iznos=Decimal(request.POST.get('iznos')),
-            svrha=request.POST.get('svrha', 'Porez na dohodak'),
-            poziv_na_broj=request.POST.get('poziv', '')
+            primalac=request.POST.get("primalac"),
+            iznos=Decimal(request.POST.get("iznos")),
+            svrha=request.POST.get("svrha", "Porez na dohodak"),
+            poziv_na_broj=request.POST.get("poziv", ""),
         )
-        
+
         # Generiši PNG uplatnicu
         png_file = generate_payment_slip_png(uplatnica, korisnik)
         uplatnica.fajl = png_file
         uplatnica.save()
-        
+
         log_audit(
             user=request.user,
-            model_name='Uplatnica',
+            model_name="Uplatnica",
             object_id=uplatnica.id,
-            action='CREATE',
-            new_value={'primalac': uplatnica.primalac, 'iznos': str(uplatnica.iznos)},
-            request=request
+            action="CREATE",
+            new_value={"primalac": uplatnica.primalac, "iznos": str(uplatnica.iznos)},
+            request=request,
         )
-        
+
         SystemLog.objects.create(
             user=request.user,
-            action='GENERATE_PAYMENT',
-            status='success',
-            ip_address=get_client_ip(request)
+            action="GENERATE_PAYMENT",
+            status="success",
+            ip_address=get_client_ip(request),
         )
-        
-        return JsonResponse({'success': True, 'file_url': uplatnica.fajl.url})
-    
+
+        return JsonResponse({"success": True, "file_url": uplatnica.fajl.url})
+
     uplatnice = korisnik.uplatnice.all()
-    return render(request, 'core/uplatnice.html', {'uplatnice': uplatnice})
+    return render(request, "core/uplatnice.html", {"uplatnice": uplatnice})
 
 
 @login_required
 def download_payment(request, uplatnica_id):
     """Preuzmi postojeću uplatnicu"""
-    uplatnica = get_object_or_404(Uplatnica, id=uplatnica_id, korisnik=request.user.korisnik)
-    
+    uplatnica = get_object_or_404(
+        Uplatnica, id=uplatnica_id, korisnik=request.user.korisnik
+    )
+
     if uplatnica.fajl:
-        return FileResponse(uplatnica.fajl.open('rb'), as_attachment=True)
+        return FileResponse(uplatnica.fajl.open("rb"), as_attachment=True)
     else:
         png_file = generate_payment_slip_png(uplatnica, request.user.korisnik)
         uplatnica.fajl = png_file
         uplatnica.save()
-        return FileResponse(uplatnica.fajl.open('rb'), as_attachment=True)
+        return FileResponse(uplatnica.fajl.open("rb"), as_attachment=True)
 
 
 # ============================================
 # BILANS
 # ============================================
+@login_required
+def izvodi_upload(request):
+    """Bulk upload PDF izvoda - do 30 fajlova"""
+    if request.method == "POST":
+        files = request.FILES.getlist("izvodi")
+
+        if len(files) > 30:
+            messages.error(request, "Možete upload-ovati maksimalno 30 fajlova!")
+            return redirect("izvodi_upload")
+
+        ukupno_prihodi = Decimal("0")
+        ukupno_rashodi = Decimal("0")
+        processed_count = 0
+        error_count = 0
+
+        for pdf_file in files:
+            try:
+                # Sačuvaj sadržaj fajla za kasnije (mora prije parsiranja)
+                file_content = pdf_file.read()
+                pdf_file.seek(0)
+
+                # Parsuj PDF - vraća listu transakcija
+                transakcije = parse_bank_statement_pdf(pdf_file)
+
+                print(
+                    f"\n📄 {pdf_file.name}: Dobio {len(transakcije)} transakcija od parsera"
+                )
+
+                # Kreiraj Prihod entry za SVAKU transakciju
+                for trans in transakcije:
+                    print(f"  Procesiranje: {trans['opis']} | iznos={trans['iznos']}")
+
+                    # Odredi vrstu na osnovu znaka iznosa
+                    if trans["iznos"] > 0:
+                        # PRIHOD
+                        vrsta = "prihod"
+                        iznos_za_bazu = trans["iznos"]  # Pozitivan broj
+                        ukupno_prihodi += trans["iznos"]
+                    else:
+                        # RASHOD
+                        vrsta = "rashod"
+                        iznos_za_bazu = abs(
+                            trans["iznos"]
+                        )  # Pozitivan broj (u bazi čuvamo apsolutnu)
+                        ukupno_rashodi += abs(trans["iznos"])
+
+                    # Kreiraj u bazi
+                    prihod_obj = Prihod.objects.create(
+                        korisnik=request.user.korisnik,
+                        mjesec=trans["datum"].strftime("%Y-%m"),
+                        datum=trans["datum"],
+                        iznos=iznos_za_bazu,  # SVE POZITIVNO
+                        vrsta=vrsta,
+                        opis=trans["opis"],
+                        izvod_fajl=ContentFile(file_content, name=pdf_file.name),
+                    )
+
+                    print(
+                        f"    ✅ Sačuvano u bazi: ID={prihod_obj.id}, vrsta={vrsta}, iznos={iznos_za_bazu}"
+                    )
+
+                processed_count += 1
+
+            except Exception as e:
+                error_count += 1
+                print(f"❌ Greška u {pdf_file.name}: {str(e)}")
+                import traceback
+
+                traceback.print_exc()
+                messages.warning(request, f"Greška u {pdf_file.name}: {str(e)}")
+
+        # Poruka korisniku
+        if processed_count > 0:
+            neto = ukupno_prihodi - ukupno_rashodi
+            messages.success(
+                request,
+                f"✅ Obrađeno {processed_count} izvoda! "
+                f"💰 Prihodi: +{ukupno_prihodi:.2f} KM | "
+                f"💸 Rashodi: -{ukupno_rashodi:.2f} KM | "
+                f"📊 Neto: {neto:.2f} KM",
+            )
+
+        if error_count > 0:
+            messages.warning(request, f"⚠️ {error_count} fajlova nije obrađeno")
+
+        return redirect("izvodi_pregled")
+
+    return render(request, "core/izvodi_upload.html")
+
+
+@login_required
+def izvod_delete(request, izvod_id):
+    """Obriši pojedinačnu transakciju"""
+    if request.method == "POST":
+        izvod = get_object_or_404(Prihod, id=izvod_id, korisnik=request.user.korisnik)
+        opis = izvod.opis[:50]
+        iznos = izvod.iznos
+
+        izvod.delete()
+
+        messages.success(request, f"🗑️ Obrisano: {opis} - {iznos} KM")
+
+        return redirect("izvodi_pregled")
+
+    return redirect("izvodi_pregled")
+
+
+@login_required
+def izvodi_pregled(request):
+    """Pregled svih transakcija"""
+    od_datum = request.GET.get("od")
+    do_datum = request.GET.get("do")
+
+    transakcije = Prihod.objects.filter(korisnik=request.user.korisnik).exclude(
+        datum=None
+    )
+
+    if od_datum:
+        transakcije = transakcije.filter(datum__gte=od_datum)
+    if do_datum:
+        transakcije = transakcije.filter(datum__lte=do_datum)
+
+    from django.db.models import Sum
+
+    # SVI IZNOSI SU POZITIVNI U BAZI!
+    ukupno_prihodi = (
+        transakcije.filter(vrsta="prihod").aggregate(total=Sum("iznos"))["total"] or 0
+    )
+    ukupno_rashodi = (
+        transakcije.filter(vrsta="rashod").aggregate(total=Sum("iznos"))["total"] or 0
+    )
+
+    # Bilans = prihodi - rashodi
+    bilans = ukupno_prihodi - ukupno_rashodi
+
+    return render(
+        request,
+        "core/izvodi_pregled.html",
+        {
+            "transakcije": transakcije,
+            "ukupno_prihodi": ukupno_prihodi,
+            "ukupno_rashodi": ukupno_rashodi,
+            "bilans": bilans,
+            "od_datum": od_datum,
+            "do_datum": do_datum,
+        },
+    )
+
 
 @login_required
 def bilans_view(request):
     """Bilans uspjeha"""
     korisnik = request.user.korisnik
-    
-    if korisnik.plan not in ['Business', 'Enterprise']:
-        return redirect('dashboard')
-    
-    if request.method == 'POST':
-        od = request.POST.get('od')
-        do = request.POST.get('do')
-        
+
+    if korisnik.plan not in ["Business", "Enterprise"]:
+        return redirect("dashboard")
+
+    if request.method == "POST":
+        od = request.POST.get("od")
+        do = request.POST.get("do")
+
         # Kalkulacije
         prihodi = korisnik.prihodi.filter(mjesec__gte=od, mjesec__lte=do)
         ukupan_prihod = sum([p.iznos for p in prihodi])
         porez = ukupan_prihod * Decimal(str(settings.STOPA_POREZA))
-        doprinosi = Decimal(str(settings.PROSJECNA_BRUTO_PLATA)) * Decimal(str(settings.STOPA_DOPRINOSA)) * prihodi.count()
+        doprinosi = (
+            Decimal(str(settings.PROSJECNA_BRUTO_PLATA))
+            * Decimal(str(settings.STOPA_DOPRINOSA))
+            * prihodi.count()
+        )
         neto = ukupan_prihod - porez - doprinosi
-        
+
         bilans = Bilans.objects.create(
             korisnik=korisnik,
             od_mjesec=od,
@@ -553,61 +902,66 @@ def bilans_view(request):
             ukupan_prihod=ukupan_prihod,
             porez=porez,
             doprinosi=doprinosi,
-            neto=neto
+            neto=neto,
         )
-        
+
         csv_file = generate_bilans_csv(bilans, korisnik, prihodi)
         bilans.fajl = csv_file
         bilans.save()
-        
+
         SystemLog.objects.create(
             user=request.user,
-            action='EXPORT_BILANS_CSV',
-            status='success',
-            ip_address=get_client_ip(request)
+            action="EXPORT_BILANS_CSV",
+            status="success",
+            ip_address=get_client_ip(request),
         )
-        
-        return JsonResponse({'success': True, 'file_url': bilans.fajl.url})
-    
+
+        return JsonResponse({"success": True, "file_url": bilans.fajl.url})
+
     bilansi = korisnik.bilansi.filter(datum_isteka__gt=timezone.now())
-    
-    return render(request, 'core/bilans.html', {
-        'bilansi': bilansi,
-        'retention_days': korisnik.get_retention_days()
-    })
+
+    return render(
+        request,
+        "core/bilans.html",
+        {"bilansi": bilansi, "retention_days": korisnik.get_retention_days()},
+    )
 
 
 @login_required
 def download_bilans(request, bilans_id):
     """Preuzmi sačuvani bilans"""
     bilans = get_object_or_404(Bilans, id=bilans_id, korisnik=request.user.korisnik)
-    
+
     if bilans.is_expired():
-        return JsonResponse({'error': 'Bilans je istekao'}, status=410)
-    
-    return FileResponse(bilans.fajl.open('rb'), as_attachment=True)
+        return JsonResponse({"error": "Bilans je istekao"}, status=410)
+
+    return FileResponse(bilans.fajl.open("rb"), as_attachment=True)
 
 
 @login_required
 def godisnji_izvjestaj_view(request, godina=None):
     """Generiši godišnji izvještaj za PURS (PDF)"""
     korisnik = request.user.korisnik
-    
+
     if not godina:
         godina = timezone.now().year - 1
-    
+
     izvjestaj = korisnik.godisnji_izvjestaji.filter(godina=godina).first()
-    
+
     if not izvjestaj:
         prihodi = korisnik.prihodi.filter(mjesec__startswith=str(godina))
         ukupan_prihod = sum([p.iznos for p in prihodi])
-        porez = ukupan_prihod * Decimal('0.02')
-        doprinosi = Decimal(str(settings.PROSJECNA_BRUTO_PLATA)) * Decimal('0.70') * prihodi.count()
+        porez = ukupan_prihod * Decimal("0.02")
+        doprinosi = (
+            Decimal(str(settings.PROSJECNA_BRUTO_PLATA))
+            * Decimal("0.70")
+            * prihodi.count()
+        )
         neto = ukupan_prihod - porez - doprinosi
-        
-        fakture = korisnik.fakture.filter(datum__year=godina)
-        klijenti = fakture.values_list('klijent', flat=True).distinct().count()
-        
+
+        fakture = request.user.fakture.filter(datum__year=godina)
+        klijenti = fakture.values_list("klijent", flat=True).distinct().count()
+
         izvjestaj = GodisnjiIzvjestaj.objects.create(
             korisnik=korisnik,
             godina=godina,
@@ -616,189 +970,215 @@ def godisnji_izvjestaj_view(request, godina=None):
             ukupni_doprinosi=doprinosi,
             neto_dohodak=neto,
             broj_faktura=fakture.count(),
-            broj_klijenata=klijenti
+            broj_klijenata=klijenti,
         )
-        
+
         pdf_buffer = generate_godisnji_izvjestaj_pdf(korisnik, godina)
         izvjestaj.fajl_pdf.save(
-            f'godisnji-izvjestaj-{godina}.pdf',
-            ContentFile(pdf_buffer.read())
+            f"godisnji-izvjestaj-{godina}.pdf", ContentFile(pdf_buffer.read())
         )
-    
-    return FileResponse(izvjestaj.fajl_pdf.open('rb'), as_attachment=True)
+
+    return FileResponse(izvjestaj.fajl_pdf.open("rb"), as_attachment=True)
 
 
 # ============================================
 # BULK UPLOAD
 # ============================================
 
+
 @login_required
 @require_http_methods(["POST"])
 def bulk_upload_documents(request):
     """Bulk upload PDF faktura sa OCR parsing"""
-    allowed, error = check_rate_limit(request.user, 'BULK_UPLOAD', limit=5, period_minutes=60)
+    allowed, error = check_rate_limit(
+        request.user, "BULK_UPLOAD", limit=5, period_minutes=60
+    )
     if not allowed:
-        return JsonResponse({'error': error}, status=429)
-    
-    files = request.FILES.getlist('documents')
+        return JsonResponse({"error": error}, status=429)
+
+    files = request.FILES.getlist("documents")
     korisnik = request.user.korisnik
-    
+
     results = []
-    
+
     for file in files:
         doc = UploadedDocument.objects.create(
             korisnik=korisnik,
-            document_type='invoice',
+            document_type="invoice",
             file=file,
-            original_filename=file.name
+            original_filename=file.name,
         )
-        
+
         extracted = process_uploaded_pdf(doc)
-        
-        results.append({
-            'filename': file.name,
-            'extracted': extracted,
-            'doc_id': doc.id
-        })
-        
+
+        results.append(
+            {"filename": file.name, "extracted": extracted, "doc_id": doc.id}
+        )
+
         log_audit(
             user=request.user,
-            model_name='UploadedDocument',
+            model_name="UploadedDocument",
             object_id=doc.id,
-            action='CREATE',
-            new_value={'filename': file.name},
-            request=request
+            action="CREATE",
+            new_value={"filename": file.name},
+            request=request,
         )
-    
+
     SystemLog.objects.create(
         user=request.user,
-        action='BULK_UPLOAD',
-        status='success',
+        action="BULK_UPLOAD",
+        status="success",
         ip_address=get_client_ip(request),
-        details=f'Uploaded {len(files)} documents'
+        details=f"Uploaded {len(files)} documents",
     )
-    
-    return JsonResponse({'success': True, 'results': results})
+
+    return JsonResponse({"success": True, "results": results})
 
 
 # ============================================
 # CALENDAR
 # ============================================
 
+
 @login_required
 def calendar_view(request):
     """Kalendar view sa svim događajima"""
     korisnik = request.user.korisnik
-    
+
     current_year = timezone.now().year
     create_payment_deadline_events(korisnik, current_year)
-    
+
     events = korisnik.calendar_events.all()
-    
+
     calendar_events = []
     for event in events:
-        calendar_events.append({
-            'id': event.id,
-            'title': event.title,
-            'start': event.start_date.isoformat(),
-            'end': event.end_date.isoformat() if event.end_date else event.start_date.isoformat(),
-            'allDay': event.all_day,
-            'description': event.description,
-            'color': '#3b82f6' if event.event_type == 'payment_deadline' else '#8b5cf6'
-        })
-    
-    return render(request, 'core/calendar.html', {'events': json.dumps(calendar_events)})
+        calendar_events.append(
+            {
+                "id": event.id,
+                "title": event.title,
+                "start": event.start_date.isoformat(),
+                "end": (
+                    event.end_date.isoformat()
+                    if event.end_date
+                    else event.start_date.isoformat()
+                ),
+                "allDay": event.all_day,
+                "description": event.description,
+                "color": (
+                    "#3b82f6" if event.event_type == "payment_deadline" else "#8b5cf6"
+                ),
+            }
+        )
+
+    return render(
+        request, "core/calendar.html", {"events": json.dumps(calendar_events)}
+    )
 
 
 # ============================================
 # ANALYTICS
 # ============================================
 
+
 @login_required
 def analytics_view(request):
     """Napredna analitika"""
     korisnik = request.user.korisnik
-    
+
     from django.db.models import Sum, Count
-    
-    top_klijenti = korisnik.fakture.values('klijent').annotate(
-        total=Sum('iznos'),
-        count=Count('id')
-    ).order_by('-total')[:5]
-    
+
+    top_klijenti = (
+        request.user.fakture.values("klijent")
+        .annotate(total=Sum("iznos"), count=Count("id"))
+        .order_by("-total")[:5]
+    )
+
     from django.db.models.functions import ExtractMonth
-    mjesecna_statistika = korisnik.prihodi.annotate(
-        month=ExtractMonth('mjesec')
-    ).values('month').annotate(
-        avg_income=models.Avg('iznos')
-    ).order_by('month')
-    
+
+    mjesecna_statistika = (
+        korisnik.prihodi.annotate(month=ExtractMonth("mjesec"))
+        .values("month")
+        .annotate(avg_income=models.Avg("iznos"))
+        .order_by("month")
+    )
+
     ukupno_ponuda = 100
-    placene_fakture = korisnik.fakture.filter(status='Plaćena').count()
-    conversion_rate = (placene_fakture / ukupno_ponuda * 100) if ukupno_ponuda > 0 else 0
-    
+    placene_fakture = request.user.fakture.filter(status="Plaćena").count()
+    conversion_rate = (
+        (placene_fakture / ukupno_ponuda * 100) if ukupno_ponuda > 0 else 0
+    )
+
     context = {
-        'top_klijenti': top_klijenti,
-        'mjesecna_statistika': list(mjesecna_statistika),
-        'conversion_rate': conversion_rate,
-        'predictions': korisnik.predictions.all()[:3]
+        "top_klijenti": top_klijenti,
+        "mjesecna_statistika": list(mjesecna_statistika),
+        "conversion_rate": conversion_rate,
+        "predictions": korisnik.predictions.all()[:3],
     }
-    
-    return render(request, 'core/analytics.html', context)
+
+    return render(request, "core/analytics.html", context)
 
 
 # ============================================
 # CURRENCY CONVERTER
 # ============================================
 
+
 @login_required
 def currency_converter_view(request):
     """Konverter valuta"""
     currencies = Currency.objects.all()
-    
+
     result = None
-    if request.method == 'POST':
-        amount = Decimal(request.POST.get('amount'))
-        from_curr = request.POST.get('from_currency')
-        to_curr = request.POST.get('to_currency')
-        
+    if request.method == "POST":
+        amount = Decimal(request.POST.get("amount"))
+        from_curr = request.POST.get("from_currency")
+        to_curr = request.POST.get("to_currency")
+
         result = convert_currency(amount, from_curr, to_curr)
-    
-    return render(request, 'core/currency_converter.html', {
-        'currencies': currencies,
-        'result': result
-    })
+
+    return render(
+        request,
+        "core/currency_converter.html",
+        {"currencies": currencies, "result": result},
+    )
 
 
 # ============================================
 # EXPORT DATA
 # ============================================
 
+
 @login_required
 def export_all_data(request):
     """Export svih podataka korisnika (GDPR compliance)"""
     korisnik = request.user.korisnik
-    
+
     data = {
-        'korisnik': {
-            'ime': korisnik.ime,
-            'email': korisnik.user.email,
-            'plan': korisnik.plan,
-            'jib': korisnik.jib,
-            'racun': korisnik.racun,
-            'registrovan': korisnik.registrovan.isoformat()
+        "korisnik": {
+            "ime": korisnik.ime,
+            "email": korisnik.user.email,
+            "plan": korisnik.plan,
+            "jib": korisnik.jib,
+            "racun": korisnik.racun,
+            "registrovan": korisnik.registrovan.isoformat(),
         },
-        'prihodi': list(korisnik.prihodi.values()),
-        'fakture': list(korisnik.fakture.values('broj', 'datum', 'klijent', 'iznos', 'status', 'opis')),
-        'uplatnice': list(korisnik.uplatnice.values()),
-        'bilansi': list(korisnik.bilansi.values()),
+        "prihodi": list(korisnik.prihodi.values()),
+        "fakture": list(
+            request.user.fakture.values(
+                "broj", "datum", "klijent", "iznos", "status", "opis"
+            )
+        ),
+        "uplatnice": list(korisnik.uplatnice.values()),
+        "bilansi": list(korisnik.bilansi.values()),
     }
-    
+
     json_data = json.dumps(data, indent=2, default=str, ensure_ascii=False)
-    
-    response = HttpResponse(json_data, content_type='application/json')
-    response['Content-Disposition'] = f'attachment; filename="epausa-export-{korisnik.ime}.json"'
-    
+
+    response = HttpResponse(json_data, content_type="application/json")
+    response["Content-Disposition"] = (
+        f'attachment; filename="epausa-export-{korisnik.ime}.json"'
+    )
+
     return response
 
 
@@ -806,40 +1186,43 @@ def export_all_data(request):
 # ADMIN PANEL
 # ============================================
 
+
 @login_required
 def admin_panel(request):
     """Admin panel"""
     if not request.user.is_staff:
-        return redirect('dashboard')
-    
-    tab = request.GET.get('tab', 'users')
-    
+        return redirect("dashboard")
+
+    tab = request.GET.get("tab", "users")
+
     korisnici = Korisnik.objects.all()
     logs = SystemLog.objects.all()[:100]
     failed = FailedRequest.objects.all()
-    
+
     context = {
-        'korisnici': korisnici,
-        'logs': logs,
-        'failed_requests': failed,
-        'active_tab': tab
+        "korisnici": korisnici,
+        "logs": logs,
+        "failed_requests": failed,
+        "active_tab": tab,
     }
-    
-    return render(request, 'core/admin_panel.html', context)
+
+    return render(request, "core/admin_panel.html", context)
 
 
 @login_required
 def admin_login_as(request, user_id):
     """Admin login kao drugi korisnik"""
     if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
     target_user = get_object_or_404(User, id=user_id)
-    
+
     auth_logout(request)
-    auth_login(request, target_user, backend='django.contrib.auth.backends.ModelBackend')
-    
-    return redirect('dashboard')
+    auth_login(
+        request, target_user, backend="django.contrib.auth.backends.ModelBackend"
+    )
+
+    return redirect("dashboard")
 
 
 @login_required
@@ -847,22 +1230,23 @@ def admin_login_as(request, user_id):
 def retry_failed_request(request, request_id):
     """Retry failed request"""
     if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
     failed_req = get_object_or_404(FailedRequest, id=request_id)
-    
+
     import random
+
     if random.random() > 0.5:
         SystemLog.objects.create(
             user=failed_req.user,
             action=f"{failed_req.action}_RETRY",
-            status='success',
-            ip_address=get_client_ip(request)
+            status="success",
+            ip_address=get_client_ip(request),
         )
         failed_req.delete()
-        return JsonResponse({'success': True})
+        return JsonResponse({"success": True})
     else:
-        return JsonResponse({'success': False, 'error': 'Retry neuspješan'})
+        return JsonResponse({"success": False, "error": "Retry neuspješan"})
 
 
 @login_required
@@ -870,9 +1254,9 @@ def retry_failed_request(request, request_id):
 def skip_failed_request(request, request_id):
     """Skip failed request"""
     if not request.user.is_staff:
-        return JsonResponse({'error': 'Unauthorized'}, status=403)
-    
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
     failed_req = get_object_or_404(FailedRequest, id=request_id)
     failed_req.delete()
-    
-    return JsonResponse({'success': True})
+
+    return JsonResponse({"success": True})
