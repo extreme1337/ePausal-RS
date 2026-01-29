@@ -490,3 +490,5 @@ class CalendarEvent(models.Model):
     class Meta:
         ordering = ['start_date']
         verbose_name_plural = "Calendar Events"
+
+
