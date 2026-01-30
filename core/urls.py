@@ -85,4 +85,5 @@ urlpatterns = [
         views.skip_failed_request,
         name="skip_request",
     ),
+    path('admin-panel/parametri/update/', views.admin_parametri_update, name='admin_parametri_update'),
 ]

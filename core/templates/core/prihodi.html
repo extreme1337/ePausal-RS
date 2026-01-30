@@ -1,5 +1,4 @@
 {% extends 'core/base.html' %}
-{% load static %}
 {% block title %}Prihodi i rashodi - ePauša RS{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto p-6">
@@ -25,10 +24,51 @@
             </div>
         </div>
 
+        <!-- Info Box - Tip Preduzetnika -->
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex items-start">
+                <i class="fas fa-info-circle text-yellow-600 mt-1 mr-3"></i>
+                <div class="flex-1">
+                    <h3 class="text-sm font-medium text-yellow-800 mb-2">Status i Parametri</h3>
+                    <div class="grid md:grid-cols-2 gap-3 text-sm text-yellow-700">
+                        <div>
+                            <p class="mb-1">
+                                <strong>Tip preduzetnika:</strong>
+                                {% if tip_preduzetnika == 'mali' %}
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">
+                                    Mali preduzetnik
+                                </span>
+                                {% else %}
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-semibold">
+                                    Veliki preduzetnik
+                                </span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-1">
+                                <strong>Poreska stopa:</strong>
+                                {% if tip_preduzetnika == 'mali' %}
+                                {{ parametri.porez_mali_preduzetnik }}% (mjesečno)
+                                {% else %}
+                                {{ parametri.porez_veliki_preduzetnik }}% (godišnje, plaća se u martu)
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div>
+                            <p class="mb-1">
+                                <strong>Godišnji prihod:</strong> {{ godisnji_prihod|floatformat:2 }} KM
+                            </p>
+                            <p class="mb-1">
+                                <strong>Mjesečni doprinosi:</strong> {{ parametri.mjesecni_doprinosi|floatformat:2 }} KM
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- FILTERI -->
         <div class="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
             <form method="get" class="grid md:grid-cols-4 gap-4">
-                <!-- Mjesec Filter -->
                 <div>
                     <label for="mjesec" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-calendar-alt mr-1 text-blue-600"></i>
@@ -45,7 +85,6 @@
                     </select>
                 </div>
 
-                <!-- Godina Filter -->
                 <div>
                     <label for="godina" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-calendar mr-1 text-blue-600"></i>
@@ -62,7 +101,6 @@
                     </select>
                 </div>
 
-                <!-- Pretraga -->
                 <div>
                     <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
                         <i class="fas fa-search mr-1 text-blue-600"></i>
@@ -72,7 +110,6 @@
                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <!-- Dugmad -->
                 <div class="flex items-end gap-2">
                     <button type="submit"
                         class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition font-medium">
@@ -85,23 +122,6 @@
                     </a>
                 </div>
             </form>
-
-            <!-- Info o filterima -->
-            {% if selektovani_mjesec or selektovana_godina or search %}
-            <div class="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                <i class="fas fa-info-circle text-blue-600"></i>
-                <span>Aktivni filteri:</span>
-                {% if selektovani_mjesec %}
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">Mjesec: {{ naziv_mjeseca }}</span>
-                {% endif %}
-                {% if selektovana_godina %}
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">Godina: {{ selektovana_godina }}</span>
-                {% endif %}
-                {% if search %}
-                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">Pretraga: "{{ search }}"</span>
-                {% endif %}
-            </div>
-            {% endif %}
         </div>
 
         <!-- Table -->
@@ -111,7 +131,13 @@
                     <tr>
                         <th class="px-4 py-2 text-left">Mjesec</th>
                         <th class="px-4 py-2 text-right">Prihod (KM)</th>
-                        <th class="px-4 py-2 text-right">Porez (2%)</th>
+                        <th class="px-4 py-2 text-right">Porez
+                            {% if tip_preduzetnika == 'mali' %}
+                            ({{ parametri.porez_mali_preduzetnik }}%)
+                            {% else %}
+                            ({{ parametri.porez_veliki_preduzetnik }}%)
+                            {% endif %}
+                        </th>
                         <th class="px-4 py-2 text-right">Doprinosi</th>
                         <th class="px-4 py-2 text-right">Ukupni rashodi</th>
                         <th class="px-4 py-2 text-right">Neto</th>
@@ -125,8 +151,12 @@
                         </td>
                         <td class="px-4 py-3 text-right text-orange-600">{{ podatak.porez|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right text-purple-600">{{ podatak.doprinosi|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-semibold text-red-600">{{ podatak.ukupni_rashodi|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right font-bold text-green-600">{{ podatak.neto|floatformat:2 }}</td>
+                        <td class="px-4 py-3 text-right font-semibold text-red-600">
+                            {{ podatak.ukupni_rashodi|floatformat:2 }}</td>
+                        <td
+                            class="px-4 py-3 text-right font-bold {% if podatak.neto >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ podatak.neto|floatformat:2 }}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -144,7 +174,10 @@
                         <td class="px-4 py-3 text-right text-orange-600">{{ totali.porez|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right text-purple-600">{{ totali.doprinosi|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right text-red-600">{{ totali.rashodi|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right text-green-600">{{ totali.neto|floatformat:2 }}</td>
+                        <td
+                            class="px-4 py-3 text-right {% if totali.neto >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                            {{ totali.neto|floatformat:2 }}
+                        </td>
                     </tr>
                     {% endif %}
                 </tbody>
@@ -153,16 +186,12 @@
 
         <!-- Paginacija -->
         {% if page_obj.paginator.num_pages > 1 %}
-        <div class="mt-6 flex justify-center items-center gap-2">
+        <div class="mt-6 flex justify-content-center items-center gap-2">
             {% if page_obj.has_previous %}
             <a href="?page=1{% if selektovani_mjesec %}&mjesec={{ selektovani_mjesec }}{% endif %}{% if selektovana_godina %}&godina={{ selektovana_godina }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
-                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">
-                Prva
-            </a>
+                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">Prva</a>
             <a href="?page={{ page_obj.previous_page_number }}{% if selektovani_mjesec %}&mjesec={{ selektovani_mjesec }}{% endif %}{% if selektovana_godina %}&godina={{ selektovana_godina }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
-                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">
-                &laquo;
-            </a>
+                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">&laquo;</a>
             {% endif %}
 
             <span class="px-4 py-1 bg-blue-600 text-white rounded text-sm font-medium">
@@ -171,13 +200,9 @@
 
             {% if page_obj.has_next %}
             <a href="?page={{ page_obj.next_page_number }}{% if selektovani_mjesec %}&mjesec={{ selektovani_mjesec }}{% endif %}{% if selektovana_godina %}&godina={{ selektovana_godina }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
-                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">
-                &raquo;
-            </a>
+                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">&raquo;</a>
             <a href="?page={{ page_obj.paginator.num_pages }}{% if selektovani_mjesec %}&mjesec={{ selektovani_mjesec }}{% endif %}{% if selektovana_godina %}&godina={{ selektovana_godina }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
-                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">
-                Poslednja
-            </a>
+                class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm">Poslednja</a>
             {% endif %}
         </div>
         {% endif %}

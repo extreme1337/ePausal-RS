@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.conf import settings
+from django.db.models import Q, Sum
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from django.utils.translation import activate, get_language
@@ -397,45 +398,64 @@ def dashboard(request):
 # ============================================
 
 
+@login_required
 def prihodi_view(request):
-    """Prikaz prihoda grupisanih po mjesecu"""
+    """Prikaz prihoda grupisanih po mjesecu sa novom logikom poreza"""
 
-    # Pronađi Korisnik objekat za ulogovanog korisnika preko 'user' polja
+    # Pronađi Korisnik objekat
     try:
         korisnik = Korisnik.objects.get(user=request.user)
     except Korisnik.DoesNotExist:
         korisnik = None
 
-    # Preuzmi prihode samo za ulogovanog korisnika
-    if korisnik:
-        prihodi = Prihod.objects.filter(korisnik=korisnik)
-    else:
-        prihodi = Prihod.objects.none()
+    if not korisnik:
+        return render(request, "core/prihodi.html", {"error": "Korisnik nije pronađen"})
 
-    # Filter po mjesecu (samo broj 1-12)
+    # Preuzmi sistemske parametre
+    parametri = SistemskiParametri.get_parametri()
+
+    # Preuzmi prihode
+    prihodi = Prihod.objects.filter(korisnik=korisnik)
+
+    # Filter po mjesecu
     mjesec_param = request.GET.get("mjesec", "")
     if mjesec_param:
-        # Filtriraj po broju mjeseca u stringu "2025-12"
         prihodi = prihodi.filter(mjesec__endswith=f"-{int(mjesec_param):02d}")
 
     # Filter po godini
     godina_param = request.GET.get("godina", "")
+    godina_za_porez = int(godina_param) if godina_param else datetime.now().year
+
     if godina_param:
         prihodi = prihodi.filter(mjesec__startswith=godina_param)
 
     # Pretraga
     search = request.GET.get("search", "")
     if search:
-        prihodi = prihodi.filter(Q(iznos__icontains=search))
+        prihodi = prihodi.filter(Q(iznos__icontains=search) | Q(opis__icontains=search))
 
-    # Grupisanje po mjesecu - saberi sve iznose za isti mjesec
+    # Izračunaj godišnji prihod (samo za prikaz)
+    godisnji_prihod_sve = Prihod.objects.filter(
+        korisnik=korisnik, mjesec__startswith=str(godina_za_porez), vrsta="prihod"
+    ).aggregate(total=Sum("iznos"))["total"] or Decimal("0")
+
+    # Koristi TIP koji je korisnik RUČNO odabrao
+    tip_preduzetnika = korisnik.tip_preduzetnika
+
+    # Odredi poresku stopu na osnovu tipa
+    if tip_preduzetnika == "veliki":
+        porez_stopa = parametri.porez_veliki_preduzetnik / Decimal("100")  # 10% -> 0.10
+    else:
+        porez_stopa = parametri.porez_mali_preduzetnik / Decimal("100")  # 2% -> 0.02
+
+    # Grupisanje po mjesecu
     mjesecni_podaci_dict = defaultdict(lambda: Decimal("0"))
 
     for prihod in prihodi:
-        mjesec_key = prihod.mjesec  # "2025-12"
-        mjesecni_podaci_dict[mjesec_key] += prihod.iznos
+        if prihod.vrsta == "prihod":  # Samo prihodi, ne rashodi
+            mjesecni_podaci_dict[prihod.mjesec] += prihod.iznos
 
-    # Konvertuj u listu i izračunaj porez, doprinose, neto
+    # Konvertuj u listu i izračunaj
     mjesecni_podaci_lista = []
     ukupan_prihod = Decimal("0")
     ukupan_porez = Decimal("0")
@@ -444,9 +464,22 @@ def prihodi_view(request):
     for mjesec_key, ukupan_prihod_mjeseca in sorted(
         mjesecni_podaci_dict.items(), reverse=True
     ):
-        # Izračunaj za UKUPAN prihod mjeseca
-        porez = ukupan_prihod_mjeseca * Decimal("0.02")  # 2% od ukupnog
-        doprinosi = Decimal("1502.20")  # Samo jednom po mjesecu
+        # Doprinosi - fiksno mjesečno
+        doprinosi = parametri.mjesecni_doprinosi
+
+        # Porez se računa drugačije za male i velike preduzetnike
+        if tip_preduzetnika == "mali":
+            # Mali: 2% mjesečno
+            porez = ukupan_prihod_mjeseca * porez_stopa
+        else:
+            # Veliki: 10% godišnje, plaća se u martu
+            mjesec_broj = int(mjesec_key.split("-")[1])
+            if mjesec_broj == parametri.mjesec_placanja_poreza:  # Mart (3)
+                # U martu se plaća cijeli godišnji porez
+                porez = godisnji_prihod_sve * porez_stopa
+            else:
+                porez = Decimal("0")  # Ostali mjeseci 0
+
         ukupni_rashodi = porez + doprinosi
         neto = ukupan_prihod_mjeseca - ukupni_rashodi
 
@@ -465,12 +498,12 @@ def prihodi_view(request):
         ukupan_porez += porez
         ukupni_doprinosi += doprinosi
 
-    # Paginacija - 25 mjeseci po stranici
+    # Paginacija
     paginator = Paginator(mjesecni_podaci_lista, 25)
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
-    # Lista mjeseci za dropdown
+    # Liste za dropdown
     mjeseci = [
         (1, "Januar"),
         (2, "Februar"),
@@ -486,17 +519,16 @@ def prihodi_view(request):
         (12, "Decembar"),
     ]
 
-    # Godine za dropdown
     trenutna_godina = datetime.now().year
     godine = range(trenutna_godina, 2020, -1)
 
-    # Naziv mjeseca za prikaz
+    # Naziv mjeseca
     naziv_mjeseca = ""
     if mjesec_param:
         mjesec_dict = dict(mjeseci)
         naziv_mjeseca = mjesec_dict.get(int(mjesec_param), "")
 
-    # Ukupni totali
+    # Totali
     ukupni_rashodi_total = ukupan_porez + ukupni_doprinosi
     neto_total = ukupan_prihod - ukupni_rashodi_total
 
@@ -505,7 +537,7 @@ def prihodi_view(request):
         "mjeseci": mjeseci,
         "godine": godine,
         "selektovani_mjesec": int(mjesec_param) if mjesec_param else None,
-        "selektovana_godina": int(godina_param) if godina_param else None,
+        "selektovana_godina": godina_za_porez,
         "search": search,
         "totali": {
             "prihod": ukupan_prihod,
@@ -516,6 +548,9 @@ def prihodi_view(request):
         },
         "total_count": len(mjesecni_podaci_lista),
         "naziv_mjeseca": naziv_mjeseca,
+        "tip_preduzetnika": tip_preduzetnika,
+        "godisnji_prihod": godisnji_prihod_sve,
+        "parametri": parametri,
     }
 
     return render(request, "core/prihodi.html", context)
@@ -1291,15 +1326,52 @@ def admin_panel(request):
     logs = SystemLog.objects.all()[:100]
     failed = FailedRequest.objects.all()
 
+    parametri = SistemskiParametri.get_parametri()
+
     context = {
         "korisnici": korisnici,
         "logs": logs,
         "failed_requests": failed,
         "active_tab": tab,
         "search_query": search_query,
+        "parametri": parametri,
     }
 
     return render(request, "core/admin_panel.html", context)
+
+
+@login_required
+def admin_parametri_update(request):
+    """Ažuriranje sistemskih parametara (samo za admin)"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    if request.method == "POST":
+        parametri = SistemskiParametri.get_parametri()
+
+        # Ažuriraj vrijednosti
+        parametri.mjesecni_doprinosi = Decimal(
+            request.POST.get("mjesecni_doprinosi", "466.00")
+        )
+        parametri.prag_mali_preduzetnik = Decimal(
+            request.POST.get("prag_mali_preduzetnik", "100000.00")
+        )  
+        parametri.porez_mali_preduzetnik = Decimal(
+            request.POST.get("porez_mali_preduzetnik", "2.00")
+        )
+        parametri.porez_veliki_preduzetnik = Decimal(
+            request.POST.get("porez_veliki_preduzetnik", "10.00")
+        )
+        parametri.mjesec_placanja_poreza = int(
+            request.POST.get("mjesec_placanja_poreza", "3")
+        )
+        parametri.azurirao = request.user
+        parametri.save()
+
+        messages.success(request, "✅ Sistemski parametri uspješno ažurirani!")
+        return redirect("/admin-panel/?tab=parametri")
+
+    return redirect("/admin-panel/")
 
 
 @login_required
