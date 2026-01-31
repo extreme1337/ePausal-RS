@@ -88,7 +88,7 @@ class Command(BaseCommand):
                     'primalac_adresa': f_data['primalac_adresa'],
                     'primalac_mjesto': f_data['primalac_mjesto'],
                     
-                    'valuta': 'USD',
+                    'valuta': 'BAM',
                     'status': 'paid',
                 }
             )

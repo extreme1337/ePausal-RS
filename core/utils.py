@@ -86,7 +86,8 @@ def generate_invoice_doc(faktura):
         <strong>Kupac / Client:</strong><br>
         <strong>{faktura.primalac_naziv}</strong><br>
         {faktura.primalac_adresa}<br>
-        {faktura.primalac_mjesto}
+        {faktura.primalac_mjesto}<br>
+        {f'<p><strong>JIB: {faktura.primalac_jib}</strong></p>' if faktura.primalac_jib else ''}
     </div>
     
     <!-- Tabela stavki -->

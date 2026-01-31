@@ -138,7 +138,6 @@
                             ({{ parametri.porez_veliki_preduzetnik }}%)
                             {% endif %}
                         </th>
-                        <th class="px-4 py-2 text-right">Doprinosi</th>
                         <th class="px-4 py-2 text-right">Ukupni rashodi</th>
                         <th class="px-4 py-2 text-right">Neto</th>
                     </tr>
@@ -150,7 +149,6 @@
                         <td class="px-4 py-3 text-right font-semibold text-blue-600">{{ podatak.prihod|floatformat:2 }}
                         </td>
                         <td class="px-4 py-3 text-right text-orange-600">{{ podatak.porez|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right text-purple-600">{{ podatak.doprinosi|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right font-semibold text-red-600">
                             {{ podatak.ukupni_rashodi|floatformat:2 }}</td>
                         <td
@@ -172,7 +170,6 @@
                         <td class="px-4 py-3">UKUPNO</td>
                         <td class="px-4 py-3 text-right text-blue-600">{{ totali.prihod|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right text-orange-600">{{ totali.porez|floatformat:2 }}</td>
-                        <td class="px-4 py-3 text-right text-purple-600">{{ totali.doprinosi|floatformat:2 }}</td>
                         <td class="px-4 py-3 text-right text-red-600">{{ totali.rashodi|floatformat:2 }}</td>
                         <td
                             class="px-4 py-3 text-right {% if totali.neto >= 0 %}text-green-600{% else %}text-red-600{% endif %}">

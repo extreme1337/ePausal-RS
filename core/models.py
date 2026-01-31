@@ -121,6 +121,14 @@ class Faktura(models.Model):
     primalac_adresa = models.CharField(max_length=300, verbose_name="Adresa primaoca")
     primalac_mjesto = models.CharField(max_length=200, verbose_name="Mjesto primaoca")
 
+    primalac_jib = models.CharField(
+        max_length=13,
+        blank=True,
+        null=True,
+        verbose_name="JIB primaoca (firme)",
+        help_text="JIB broj firme za koju se izdaje faktura (opcionalno)",
+    )
+
     # Napomene
     napomena = models.TextField(verbose_name="Napomena", blank=True)
 

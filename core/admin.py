@@ -134,7 +134,7 @@ class FakturaAdmin(admin.ModelAdmin):
         ),
         (
             "Primalac",
-            {"fields": ("primalac_naziv", "primalac_adresa", "primalac_mjesto")},
+            {"fields": ("primalac_naziv", "primalac_adresa", "primalac_mjesto", "primalac_jib")},
         ),
         (
             "Finansije",

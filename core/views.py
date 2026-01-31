@@ -19,6 +19,7 @@ from .utils import (
     generate_income_predictions,
     get_chart_data_prihodi,
     send_payment_reminder,
+    generate_payment_slip_png,
     check_rate_limit,
     log_audit,
     process_uploaded_pdf,
@@ -606,7 +607,7 @@ def faktura_dodaj(request):
                 broj_fakture=request.POST.get("broj_fakture"),
                 datum_izdavanja=request.POST.get("datum_izdavanja"),
                 mjesto_izdavanja=request.POST.get("mjesto_izdavanja", ""),
-                valuta="USD",
+                valuta="BAM",
                 status="draft",
                 # Izdavalac podaci - direktna polja
                 izdavalac_naziv=request.POST.get("izdavalac_naziv"),
@@ -619,6 +620,7 @@ def faktura_dodaj(request):
                 primalac_naziv=request.POST.get("primalac_naziv"),
                 primalac_adresa=request.POST.get("primalac_adresa"),
                 primalac_mjesto=request.POST.get("primalac_mjesto"),
+                primalac_jib=request.POST.get("primalac_jib", ""),
             )
 
             # Dodaj stavke
@@ -705,7 +707,8 @@ def fakture_view(request):
                 primalac_naziv=request.POST.get("primalac_naziv"),
                 primalac_adresa=request.POST.get("primalac_adresa"),
                 primalac_mjesto=request.POST.get("primalac_mjesto"),
-                valuta="USD",
+                primalac_jib=request.POST.get("primalac_jib", ""),
+                valuta="BAM",
                 status="draft",
             )
 

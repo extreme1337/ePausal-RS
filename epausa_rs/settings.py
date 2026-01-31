@@ -10,7 +10,8 @@ SECRET_KEY = 'django-insecure-7k#$m9x@w2p!vn8&qe^5tz%ju(3h+bs6d*f1g4ra0-yl9ckwmz
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS = ['*', '.trycloudflare.com']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'mega-gained-wallet-antiques.trycloudflare.com']
 
 # Application definition
 INSTALLED_APPS = [
@@ -177,7 +178,9 @@ CACHES = {
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
-
+CSRF_TRUSTED_ORIGINS = [
+    'https://mega-gained-wallet-antiques.trycloudflare.com',
+]
 # Ovo ostavi True:
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True

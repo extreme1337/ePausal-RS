@@ -4,22 +4,23 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto py-8 px-6">
-    
+
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <div class="flex justify-between items-center">
             <h2 class="text-3xl font-bold text-gray-800">
                 <i class="fas fa-file-invoice text-blue-600 mr-3"></i>Kreiranje nove fakture
             </h2>
-            <a href="{% url 'fakture_lista' %}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+            <a href="{% url 'fakture_lista' %}"
+                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
                 <i class="fas fa-arrow-left mr-2"></i>Nazad
             </a>
         </div>
     </div>
-    
+
     <form method="post" id="fakturaForm">
         {% csrf_token %}
-        
+
         <!-- Osnovni podaci fakture -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
@@ -28,25 +29,25 @@
             <div class="grid grid-cols-3 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Broj fakture *</label>
-                    <input type="text" name="broj_fakture" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="F001/25">
+                    <input type="text" name="broj_fakture" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="F001/25">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Datum izdavanja *</label>
-                    <input type="date" name="datum_izdavanja" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           value="{{ today }}">
+                    <input type="date" name="datum_izdavanja" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value="{{ today }}">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Mjesto izdavanja</label>
-                    <input type="text" name="mjesto_izdavanja" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Trebinje, Bosnia and Herzegovina">
+                    <input type="text" name="mjesto_izdavanja"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Trebinje, Bosnia and Herzegovina">
                 </div>
             </div>
         </div>
-        
+
         <!-- IZDAVALAC (Tvoja firma) -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
@@ -55,43 +56,43 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Naziv firme *</label>
-                    <input type="text" name="izdavalac_naziv" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder='Computer programming "KRATOS" Marko Mišeljić s.p.'>
+                    <input type="text" name="izdavalac_naziv" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder='Computer programming "KRATOS" Marko Mišeljić s.p.'>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Adresa *</label>
-                    <input type="text" name="izdavalac_adresa" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="Todorići br.2">
+                    <input type="text" name="izdavalac_adresa" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Todorići br.2">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Mjesto *</label>
-                    <input type="text" name="izdavalac_mjesto" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="89101 Trebinje">
+                    <input type="text" name="izdavalac_mjesto" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="89101 Trebinje">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">JIB *</label>
-                    <input type="text" name="izdavalac_jib" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="4512358270005">
+                    <input type="text" name="izdavalac_jib" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="4512358270005">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">IBAN</label>
-                    <input type="text" name="izdavalac_iban" 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="BA39 5678 2000 0000 9904">
+                    <input type="text" name="izdavalac_iban"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="BA39 5678 2000 0000 9904">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Bank account *</label>
-                    <input type="text" name="izdavalac_racun" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="567-810-00000286-30">
+                    <input type="text" name="izdavalac_racun" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="567-810-00000286-30">
                 </div>
             </div>
         </div>
-        
+
         <!-- PRIMALAC (Kupac) -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2">
@@ -100,37 +101,50 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Naziv *</label>
-                    <input type="text" name="primalac_naziv" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="ALIANZA INC">
+                    <input type="text" name="primalac_naziv" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="ALIANZA INC">
                 </div>
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Adresa *</label>
-                    <input type="text" name="primalac_adresa" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="1064 S NORTH COUNTY BLVD SUITE 500">
+                    <input type="text" name="primalac_adresa" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="1064 S NORTH COUNTY BLVD SUITE 500">
                 </div>
                 <div class="col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Mjesto *</label>
-                    <input type="text" name="primalac_mjesto" required 
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                           placeholder="PLEASANT GROVE">
+                    <input type="text" name="primalac_mjesto" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="PLEASANT GROVE">
+                </div>
+                <div class="col-span-2">
+                    <label for="primalac_jib" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-id-card mr-1 text-blue-600"></i>
+                        JIB - <span class="text-xs text-gray-500">(opcionalno)</span>
+                    </label>
+                    <input type="text" name="primalac_jib" id="primalac_jib" maxlength="13" pattern="[0-9]{13}"
+                        placeholder="4400123456789"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 font-mono">
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Unesite 13-cifreni JIB broj firme ako izdajete fakturu za firmu
+                    </p>
                 </div>
             </div>
         </div>
-        
+
         <!-- STAVKE FAKTURE -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <h3 class="text-xl font-semibold text-gray-700">
                     📋 Stavke fakture
                 </h3>
-                <button type="button" onclick="dodajStavku()" 
-                        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                <button type="button" onclick="dodajStavku()"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
                     <i class="fas fa-plus mr-2"></i>Dodaj stavku
                 </button>
             </div>
-            
+
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse border border-gray-300" id="stavkeTable">
                     <thead class="bg-gray-800 text-white">
@@ -151,31 +165,32 @@
                                 <span class="redni-broj font-semibold">1.</span>
                             </td>
                             <td class="border border-gray-300 px-3 py-2">
-                                <input type="text" name="stavke[0][opis]" required 
-                                       class="w-full px-3 py-2 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="Programming services">
+                                <input type="text" name="stavke[0][opis]" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="Programming services">
                             </td>
                             <td class="border border-gray-300 px-3 py-2">
-                                <input type="text" name="stavke[0][jedinica]" required 
-                                       class="w-full px-3 py-2 border border-gray-200 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="unit" value="unit">
+                                <input type="text" name="stavke[0][jedinica]" required
+                                    class="w-full px-3 py-2 border border-gray-200 rounded text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="unit" value="unit">
                             </td>
                             <td class="border border-gray-300 px-3 py-2">
                                 <input type="number" name="stavke[0][kolicina]" required min="0.01" step="0.01"
-                                       class="w-full px-3 py-2 border border-gray-200 rounded text-center kolicina focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                       value="1">
+                                    class="w-full px-3 py-2 border border-gray-200 rounded text-center kolicina focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    value="1">
                             </td>
                             <td class="border border-gray-300 px-3 py-2">
                                 <input type="number" name="stavke[0][cijena]" required min="0" step="0.01"
-                                       class="w-full px-3 py-2 border border-gray-200 rounded text-right cijena focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                       placeholder="2459.73">
+                                    class="w-full px-3 py-2 border border-gray-200 rounded text-right cijena focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    placeholder="2459.73">
                             </td>
-                            <td class="border border-gray-300 px-3 py-2 text-right font-bold text-lg ukupno-stavka text-blue-600">
+                            <td
+                                class="border border-gray-300 px-3 py-2 text-right font-bold text-lg ukupno-stavka text-blue-600">
                                 0.00
                             </td>
                             <td class="border border-gray-300 px-3 py-2 text-center">
-                                <button type="button" onclick="obrisiStavku(this)" 
-                                        class="text-red-600 hover:text-red-800 transition px-2 py-1">
+                                <button type="button" onclick="obrisiStavku(this)"
+                                    class="text-red-600 hover:text-red-800 transition px-2 py-1">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>
@@ -184,29 +199,32 @@
                     <tfoot class="bg-gray-100">
                         <tr>
                             <td colspan="5" class="border border-gray-300 px-3 py-4 text-right font-bold text-lg">
-                                TOTAL PRICE IN USD:
+                                TOTAL PRICE IN KM:
                             </td>
-                            <td class="border border-gray-300 px-3 py-4 text-right font-bold text-2xl text-blue-600" id="grandTotal">
-                                0.00$
+                            <td class="border border-gray-300 px-3 py-4 text-right font-bold text-2xl text-blue-600"
+                                id="grandTotal">
+                                0.00 KM
                             </td>
                             <td class="border border-gray-300"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
-            
+
             <div class="mt-4 text-sm text-gray-600">
                 <i class="fas fa-info-circle mr-2"></i>
                 Kliknite "Dodaj stavku" da dodate više stavki u fakturu. Ukupan iznos se automatski izračunava.
             </div>
         </div>
-        
+
         <!-- Submit dugmad -->
         <div class="flex gap-4 justify-end">
-            <a href="{% url 'fakture_lista' %}" class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-semibold">
+            <a href="{% url 'fakture_lista' %}"
+                class="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition font-semibold">
                 <i class="fas fa-times mr-2"></i>Otkaži
             </a>
-            <button type="submit" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold shadow-md">
+            <button type="submit"
+                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold shadow-md">
                 <i class="fas fa-save mr-2"></i>Generiši i preuzmi
             </button>
         </div>
@@ -214,14 +232,14 @@
 </div>
 
 <script>
-let stavkaCount = 1;
+    let stavkaCount = 1;
 
-// Dodaj novu stavku
-function dodajStavku() {
-    const tbody = document.getElementById('stavkeBody');
-    const newRow = document.createElement('tr');
-    newRow.className = 'stavka-row hover:bg-gray-50';
-    newRow.innerHTML = `
+    // Dodaj novu stavku
+    function dodajStavku() {
+        const tbody = document.getElementById('stavkeBody');
+        const newRow = document.createElement('tr');
+        newRow.className = 'stavka-row hover:bg-gray-50';
+        newRow.innerHTML = `
         <td class="border border-gray-300 px-3 py-2 text-center">
             <span class="redni-broj font-semibold">${stavkaCount + 1}.</span>
         </td>
@@ -255,103 +273,103 @@ function dodajStavku() {
             </button>
         </td>
     `;
-    tbody.appendChild(newRow);
-    stavkaCount++;
-    
-    // Dodaj event listenere za automatsko računanje
-    const inputs = newRow.querySelectorAll('.kolicina, .cijena');
-    inputs.forEach(input => {
-        input.addEventListener('input', function() {
-            izracunajStavku(this.closest('tr'));
+        tbody.appendChild(newRow);
+        stavkaCount++;
+
+        // Dodaj event listenere za automatsko računanje
+        const inputs = newRow.querySelectorAll('.kolicina, .cijena');
+        inputs.forEach(input => {
+            input.addEventListener('input', function () {
+                izracunajStavku(this.closest('tr'));
+            });
         });
-    });
-    
-    azurirajRedneBrojeve();
-}
 
-// Obriši stavku
-function obrisiStavku(button) {
-    const tbody = document.getElementById('stavkeBody');
-    const row = button.closest('tr');
-    
-    // Ne dozvoli brisanje ako je samo jedna stavka
-    if (tbody.querySelectorAll('tr').length > 1) {
-        row.remove();
         azurirajRedneBrojeve();
-        izracunajUkupno();
-    } else {
-        alert('Mora postojati najmanje jedna stavka!');
     }
-}
 
-// Ažuriraj redne brojeve nakon dodavanja/brisanja
-function azurirajRedneBrojeve() {
-    document.querySelectorAll('.redni-broj').forEach((span, index) => {
-        span.textContent = (index + 1) + '.';
-    });
-}
+    // Obriši stavku
+    function obrisiStavku(button) {
+        const tbody = document.getElementById('stavkeBody');
+        const row = button.closest('tr');
 
-// Izračunaj ukupno za jednu stavku
-function izracunajStavku(row) {
-    const kolicina = parseFloat(row.querySelector('.kolicina').value) || 0;
-    const cijena = parseFloat(row.querySelector('.cijena').value) || 0;
-    const ukupno = kolicina * cijena;
-    
-    row.querySelector('.ukupno-stavka').textContent = ukupno.toFixed(2);
-    
-    izracunajUkupno();
-}
+        // Ne dozvoli brisanje ako je samo jedna stavka
+        if (tbody.querySelectorAll('tr').length > 1) {
+            row.remove();
+            azurirajRedneBrojeve();
+            izracunajUkupno();
+        } else {
+            alert('Mora postojati najmanje jedna stavka!');
+        }
+    }
 
-// Izračunaj ukupan iznos svih stavki
-function izracunajUkupno() {
-    let total = 0;
-    
-    document.querySelectorAll('.stavka-row').forEach(row => {
+    // Ažuriraj redne brojeve nakon dodavanja/brisanja
+    function azurirajRedneBrojeve() {
+        document.querySelectorAll('.redni-broj').forEach((span, index) => {
+            span.textContent = (index + 1) + '.';
+        });
+    }
+
+    // Izračunaj ukupno za jednu stavku
+    function izracunajStavku(row) {
         const kolicina = parseFloat(row.querySelector('.kolicina').value) || 0;
         const cijena = parseFloat(row.querySelector('.cijena').value) || 0;
-        total += (kolicina * cijena);
-    });
-    
-    document.getElementById('grandTotal').textContent = total.toFixed(2) + '$';
-}
+        const ukupno = kolicina * cijena;
 
-// Event listeneri na učitavanje stranice
-document.addEventListener('DOMContentLoaded', function() {
-    // Dodaj listenere na sve postojeće inpute
-    document.querySelectorAll('.kolicina, .cijena').forEach(input => {
-        input.addEventListener('input', function() {
-            izracunajStavku(this.closest('tr'));
-        });
-    });
-    
-    // Initial calculation
-    izracunajUkupno();
-});
+        row.querySelector('.ukupno-stavka').textContent = ukupno.toFixed(2);
 
-// Validacija forme prije submit-a
-document.getElementById('fakturaForm').addEventListener('submit', function(e) {
-    const stavke = document.querySelectorAll('.stavka-row');
-    if (stavke.length === 0) {
-        e.preventDefault();
-        alert('Morate dodati najmanje jednu stavku!');
-        return false;
+        izracunajUkupno();
     }
-    
-    // Provjeri da li sve stavke imaju cijena > 0
-    let hasError = false;
-    stavke.forEach(row => {
-        const cijena = parseFloat(row.querySelector('.cijena').value) || 0;
-        if (cijena <= 0) {
-            hasError = true;
+
+    // Izračunaj ukupan iznos svih stavki
+    function izracunajUkupno() {
+        let total = 0;
+
+        document.querySelectorAll('.stavka-row').forEach(row => {
+            const kolicina = parseFloat(row.querySelector('.kolicina').value) || 0;
+            const cijena = parseFloat(row.querySelector('.cijena').value) || 0;
+            total += (kolicina * cijena);
+        });
+
+        document.getElementById('grandTotal').textContent = total.toFixed(2) + 'KM';
+    }
+
+    // Event listeneri na učitavanje stranice
+    document.addEventListener('DOMContentLoaded', function () {
+        // Dodaj listenere na sve postojeće inpute
+        document.querySelectorAll('.kolicina, .cijena').forEach(input => {
+            input.addEventListener('input', function () {
+                izracunajStavku(this.closest('tr'));
+            });
+        });
+
+        // Initial calculation
+        izracunajUkupno();
+    });
+
+    // Validacija forme prije submit-a
+    document.getElementById('fakturaForm').addEventListener('submit', function (e) {
+        const stavke = document.querySelectorAll('.stavka-row');
+        if (stavke.length === 0) {
+            e.preventDefault();
+            alert('Morate dodati najmanje jednu stavku!');
+            return false;
+        }
+
+        // Provjeri da li sve stavke imaju cijena > 0
+        let hasError = false;
+        stavke.forEach(row => {
+            const cijena = parseFloat(row.querySelector('.cijena').value) || 0;
+            if (cijena <= 0) {
+                hasError = true;
+            }
+        });
+
+        if (hasError) {
+            e.preventDefault();
+            alert('Sve stavke moraju imati cijenu veću od 0!');
+            return false;
         }
     });
-    
-    if (hasError) {
-        e.preventDefault();
-        alert('Sve stavke moraju imati cijenu veću od 0!');
-        return false;
-    }
-});
 </script>
 
 {% endblock %}
