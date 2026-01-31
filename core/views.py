@@ -598,61 +598,76 @@ def inbox_view(request):
 @login_required
 @transaction.atomic
 def faktura_dodaj(request):
-    """Kreiranje nove fakture - direktan unos"""
     if request.method == "POST":
         try:
-            # Osnovni podaci
+            # 1. Preuzmi podatke iz POST-a
+            # odabrana_valuta = request.POST.get("valuta")
+            broj = request.POST.get("broj_fakture")
+
+            # Provjera jedinstvenosti (UNIQUE constraint)
+            if Faktura.objects.filter(user=request.user, broj_fakture=broj).exists():
+                messages.error(request, f"Faktura {broj} već postoji.")
+                return render(request, "core/faktura_dodaj.html", {"today": date.today().strftime("%Y-%m-%d")})
+
+            odabrana_valuta = request.POST.get('valuta')
+
+            # --- ISPIS U KONZOLU ZA PROVJERU ---
+            print("\n" + "="*50)
+            print(f"DEBUG: PRIMLJENA VALUTA IZ FORME: >>> {odabrana_valuta} <<<")
+            print("="*50 + "\n")
+            # -----------------------------------
+
+            # Kreiranje fakture
             faktura = Faktura.objects.create(
                 user=request.user,
-                broj_fakture=request.POST.get("broj_fakture"),
-                datum_izdavanja=request.POST.get("datum_izdavanja"),
-                mjesto_izdavanja=request.POST.get("mjesto_izdavanja", ""),
-                valuta="BAM",
-                status="draft",
-                # Izdavalac podaci - direktna polja
-                izdavalac_naziv=request.POST.get("izdavalac_naziv"),
-                izdavalac_adresa=request.POST.get("izdavalac_adresa"),
-                izdavalac_mjesto=request.POST.get("izdavalac_mjesto"),
-                izdavalac_jib=request.POST.get("izdavalac_jib", ""),
-                izdavalac_iban=request.POST.get("izdavalac_iban", ""),
-                izdavalac_racun=request.POST.get("izdavalac_racun", ""),
-                # Primalac podaci - direktna polja
-                primalac_naziv=request.POST.get("primalac_naziv"),
-                primalac_adresa=request.POST.get("primalac_adresa"),
-                primalac_mjesto=request.POST.get("primalac_mjesto"),
-                primalac_jib=request.POST.get("primalac_jib", ""),
+                broj_fakture=request.POST.get('broj_fakture'),
+                datum_izdavanja=request.POST.get('datum_izdavanja'),
+                mjesto_izdavanja=request.POST.get('mjesto_izdavanja'),
+                valuta=odabrana_valuta,  # Upisujemo varijablu koju smo gore izvukli
+                izdavalac_naziv=request.POST.get('izdavalac_naziv'),
+                izdavalac_adresa=request.POST.get('izdavalac_adresa'),
+                izdavalac_mjesto=request.POST.get('izdavalac_mjesto'),
+                izdavalac_jib=request.POST.get('izdavalac_jib'),
+                izdavalac_racun=request.POST.get('izdavalac_racun'),
+                primalac_naziv=request.POST.get('primalac_naziv'),
+                primalac_adresa=request.POST.get('primalac_adresa'),
+                primalac_mjesto=request.POST.get('primalac_mjesto'),
+                primalac_jib=request.POST.get('primalac_jib'),
+                napomena=request.POST.get('napomena'),
             )
 
-            # Dodaj stavke
+            # 3. Dodavanje stavki
             i = 0
             while f"stavke[{i}][opis]" in request.POST:
-                StavkaFakture.objects.create(
-                    faktura=faktura,
-                    redni_broj=i + 1,
-                    opis=request.POST.get(f"stavke[{i}][opis]"),
-                    jedinica_mjere=request.POST.get(f"stavke[{i}][jedinica]", "unit"),
-                    kolicina=Decimal(request.POST.get(f"stavke[{i}][kolicina]", "0")),
-                    cijena_po_jedinici=Decimal(
-                        request.POST.get(f"stavke[{i}][cijena]", "0")
-                    ),
-                    pdv_stopa=0,  # Bez PDV-a za USD fakture
-                )
+                opis = request.POST.get(f"stavke[{i}][opis]")
+                if opis and opis.strip():
+                    # Čišćenje brojeva (zarez u tačku)
+                    kol = request.POST.get(f"stavke[{i}][kolicina]", "1").replace(',', '.')
+                    cij = request.POST.get(f"stavke[{i}][cijena]", "0").replace(',', '.')
+                    
+                    StavkaFakture.objects.create(
+                        faktura=faktura,
+                        redni_broj=i + 1,
+                        opis=opis,
+                        jedinica_mjere=request.POST.get(f"stavke[{i}][jedinica]", "unit"),
+                        kolicina=Decimal(kol),
+                        cijena_po_jedinici=Decimal(cij),
+                        pdv_stopa=0,
+                    )
                 i += 1
 
-            # Izračunaj ukupno
-            faktura.izracunaj_ukupno()
+            # 4. FINALNI KORAK - Forsiramo valutu još jednom prije kalkulacije
+            faktura.valuta = odabrana_valuta 
+            faktura.izracunaj_ukupno() # Ova metoda radi self.save()
 
-            messages.success(
-                request, f"Faktura {faktura.broj_fakture} je uspješno kreirana!"
-            )
+            messages.success(request, f"Faktura {faktura.broj_fakture} je sačuvana ({faktura.valuta})")
             return redirect("faktura_detalji", faktura_id=faktura.id)
 
         except Exception as e:
-            messages.error(request, f"Greška pri kreiranju fakture: {str(e)}")
+            messages.error(request, f"Greška: {str(e)}")
 
-    return render(
-        request, "core/faktura_dodaj.html", {"today": date.today().strftime("%Y-%m-%d")}
-    )
+    return render(request, "core/faktura_dodaj.html", {"today": date.today().strftime("%Y-%m-%d")})
+    
 
 
 @login_required
@@ -708,7 +723,7 @@ def fakture_view(request):
                 primalac_adresa=request.POST.get("primalac_adresa"),
                 primalac_mjesto=request.POST.get("primalac_mjesto"),
                 primalac_jib=request.POST.get("primalac_jib", ""),
-                valuta="BAM",
+                valuta=request.POST.get('valuta'),
                 status="draft",
             )
 
@@ -1358,7 +1373,7 @@ def admin_parametri_update(request):
         )
         parametri.prag_mali_preduzetnik = Decimal(
             request.POST.get("prag_mali_preduzetnik", "100000.00")
-        )  
+        )
         parametri.porez_mali_preduzetnik = Decimal(
             request.POST.get("porez_mali_preduzetnik", "2.00")
         )

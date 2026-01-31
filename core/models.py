@@ -139,7 +139,7 @@ class Faktura(models.Model):
         ("USD", "USD"),
     ]
     valuta = models.CharField(
-        max_length=3, choices=VALUTA_CHOICES, default="USD", verbose_name="Valuta"
+        max_length=3, choices=VALUTA_CHOICES, default="BAM", verbose_name="Valuta"
     )
 
     # Automatski računati iznosi
@@ -182,22 +182,33 @@ class Faktura(models.Model):
         return f"Faktura {self.broj_fakture} - {self.primalac_naziv}"
 
     def izracunaj_ukupno(self):
-        """Izračunava ukupne iznose fakture"""
+        """Izračunava ukupne iznose fakture uključujući PDV i dinamičku valutu"""
         stavke = self.stavke.all()
 
+        # Računanje suma na osnovu stavki
+        # Prema tvom modelu StavkaFakture: koristimo cijena_po_jedinici, kolicina i pdv_iznos
         ukupno_bez_pdv = sum(stavka.ukupna_cijena for stavka in stavke)
         pdv_iznos = sum(stavka.pdv_iznos for stavka in stavke)
         ukupno_sa_pdv = ukupno_bez_pdv + pdv_iznos
 
+        # Ažuriranje numeričkih polja u modelu Faktura
         self.ukupno_bez_pdv = ukupno_bez_pdv
         self.pdv_iznos = pdv_iznos
         self.ukupno_sa_pdv = ukupno_sa_pdv
+        
+        # KLJUČNA ISPRAVKA: Postavljanje polja koja utils.py koristi za PDF
+        self.ukupno_iznos = ukupno_sa_pdv
+        # Koristimo self.valuta umjesto fiksnog "BAM"
+        self.ukupno_tekst = f"{ukupno_sa_pdv:.2f} {self.valuta}"
+        
         self.save()
 
         return {
             "ukupno_bez_pdv": ukupno_bez_pdv,
             "pdv_iznos": pdv_iznos,
             "ukupno_sa_pdv": ukupno_sa_pdv,
+            "ukupno_tekst": self.ukupno_tekst,
+            "valuta": self.valuta
         }
 
 

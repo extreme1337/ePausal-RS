@@ -27,6 +27,14 @@ def get_client_ip(request):
 # ============================================
 # DOCUMENT GENERATION
 # ============================================
+def formatiraj_iznos(iznos, valuta):
+    if valuta == "BAM":
+        return f"{iznos} KM"
+    elif valuta == "EUR":
+        return f"€{iznos}"
+    elif valuta == "USD":
+        return f"${iznos}"
+    return f"{iznos} {valuta}"
 
 
 def generate_invoice_doc(faktura):
@@ -34,93 +42,128 @@ def generate_invoice_doc(faktura):
 
     # Kreiraj HTML za stavke
     stavke_html = ""
-    for stavka in faktura.stavke.all():
+    # Koristimo related_name='stavke' na InvoiceItem modelu
+    stavke = faktura.stavke.all()
+
+    for index, stavka in enumerate(stavke, start=1):
         stavke_html += f"""
             <tr>
-                <td style="text-align: center; border: 1px solid #000; padding: 8px;">{stavka.redni_broj}.</td>
+                <td style="text-align: center; border: 1px solid #000; padding: 8px;">{index}.</td>
                 <td style="border: 1px solid #000; padding: 8px;">{stavka.opis}</td>
                 <td style="text-align: center; border: 1px solid #000; padding: 8px;">{stavka.jedinica_mjere}</td>
                 <td style="text-align: center; border: 1px solid #000; padding: 8px;">{stavka.kolicina}</td>
-                <td style="text-align: right; border: 1px solid #000; padding: 8px;">{stavka.cijena_po_jedinici:.2f}</td>
-                <td style="text-align: right; border: 1px solid #000; padding: 8px;">{stavka.ukupna_cijena:.2f}</td>
+                <td style="text-align: right; border: 1px solid #000; padding: 8px;">{stavka.cijena_po_jedinici:,.2f}</td>
+                <td style="text-align: right; border: 1px solid #000; padding: 8px;">{stavka.ukupna_cijena:,.2f}</td>
             </tr>"""
 
+    # Osnovni HTML šablon
     html = f"""<!DOCTYPE html>
-<html>
+<html lang="sr">
 <head>
     <meta charset="UTF-8">
     <title>Faktura {faktura.broj_fakture}</title>
     <style>
-        @page {{ size: A4; margin: 2cm; }}
-        body {{ font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.4; }}
-        .header {{ border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 30px; }}
-        .company-name {{ font-size: 14pt; font-weight: bold; }}
-        .invoice-title {{ text-align: right; font-size: 16pt; font-weight: bold; margin: 20px 0; }}
-        .items-table {{ width: 100%; border-collapse: collapse; margin: 30px 0; }}
-        .items-table th, .items-table td {{ border: 1px solid #000; padding: 10px; }}
-        .items-table th {{ background-color: #f0f0f0; font-weight: bold; }}
-        .total-row {{ font-weight: bold; background-color: #f8f8f8; }}
+        @page {{ size: A4; margin: 1.5cm; }}
+        body {{ 
+            font-family: 'DejaVu Sans', Arial, sans-serif; 
+            font-size: 10pt; 
+            line-height: 1.4; 
+            color: #333;
+        }}
+        .header {{ border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 25px; }}
+        .company-name {{ font-size: 13pt; font-weight: bold; color: #1e40af; text-transform: uppercase; }}
+        .invoice-title {{ text-align: right; font-size: 18pt; font-weight: bold; color: #1e40af; margin: 20px 0; }}
+        .info-grid {{ width: 100%; margin-bottom: 30px; }}
+        .items-table {{ width: 100%; border-collapse: collapse; margin: 20px 0; }}
+        .items-table th {{ 
+            background-color: #f1f5f9; 
+            border: 1px solid #000; 
+            padding: 10px; 
+            font-size: 9pt;
+            text-transform: uppercase;
+        }}
+        .total-row {{ font-weight: bold; background-color: #f8fafc; font-size: 11pt; }}
+        .footer-note {{ margin-top: 40px; font-size: 8pt; color: #666; border-top: 1px solid #eee; padding-top: 10px; }}
     </style>
 </head>
 <body>
-    <!-- Zaglavlje izdavaoca -->
     <div class="header">
         <div class="company-name">{faktura.izdavalac_naziv}</div>
-        <div>{faktura.izdavalac_adresa}<br>{faktura.izdavalac_mjesto}</div>
-        {f'<div>JIB: {faktura.izdavalac_jib}</div>' if faktura.izdavalac_jib else ''}
-        {f'<div>IBAN: {faktura.izdavalac_iban}</div>' if faktura.izdavalac_iban else ''}
-        {f'<div>Bank account: {faktura.izdavalac_racun}</div>' if faktura.izdavalac_racun else ''}
+        <div>{faktura.izdavalac_adresa}, {faktura.izdavalac_mjesto}</div>
+        <div style="margin-top: 5px;">
+            {f'<strong>JIB:</strong> {faktura.izdavalac_jib} | ' if faktura.izdavalac_jib else ''}
+            {f'<strong>Bank account:</strong> {faktura.izdavalac_racun}' if faktura.izdavalac_racun else ''}
+            {f'<br><strong>IBAN:</strong> {faktura.izdavalac_iban}' if hasattr(faktura, "izdavalac_iban") and faktura.izdavalac_iban else ''}
+        </div>
     </div>
     
-    <!-- Naslov fakture -->
-    <div class="invoice-title">INVOICE No. {faktura.broj_fakture}</div>
+    <div class="invoice-title">INVOICE / RAČUN br. {faktura.broj_fakture}</div>
     
-    <!-- Datum i mjesto -->
-    <div style="text-align: right; margin-bottom: 20px;">
-        Invoice date: {faktura.datum_izdavanja.strftime('%d.%m.%Y')}<br>
-        {f'Invoicing place: {faktura.mjesto_izdavanja}' if faktura.mjesto_izdavanja else ''}
-    </div>
+    <table class="info-grid">
+        <tr>
+            <td style="width: 60%; vertical-align: top;">
+                <strong>BILL TO / KUPAC:</strong><br>
+                <div style="font-size: 11pt; margin-top: 5px;">
+                    <strong>{faktura.primalac_naziv}</strong><br>
+                    {faktura.primalac_adresa}<br>
+                    {faktura.primalac_mjesto}
+                    {f'<br><strong>JIB: {faktura.primalac_jib}</strong>' if faktura.primalac_jib else ''}
+                </div>
+            </td>
+            <td style="width: 40%; text-align: right; vertical-align: top;">
+                <strong>Date / Datum:</strong> {faktura.datum_izdavanja.strftime('%d.%m.%Y')}<br>
+                {f'<strong>Place / Mjesto:</strong> {faktura.mjesto_izdavanja}<br>' if faktura.mjesto_izdavanja else ''}
+                <strong>Currency / Valuta:</strong> {faktura.valuta}
+            </td>
+        </tr>
+    </table>
     
-    <!-- Primalac -->
-    <div style="margin: 30px 0;">
-        <strong>Kupac / Client:</strong><br>
-        <strong>{faktura.primalac_naziv}</strong><br>
-        {faktura.primalac_adresa}<br>
-        {faktura.primalac_mjesto}<br>
-        {f'<p><strong>JIB: {faktura.primalac_jib}</strong></p>' if faktura.primalac_jib else ''}
-    </div>
-    
-    <!-- Tabela stavki -->
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 8%">Num.</th>
-                <th style="width: 42%">Description</th>
-                <th style="width: 12%">Prod. unit</th>
-                <th style="width: 10%">Quantity</th>
-                <th style="width: 14%">Unit price</th>
-                <th style="width: 14%">Total price in {faktura.valuta}</th>
+                <th style="width: 5%">No.</th>
+                <th style="width: 45%">Description / Opis usluge</th>
+                <th style="width: 10%">Unit / JM</th>
+                <th style="width: 10%">Qty / Kol.</th>
+                <th style="width: 15%">Price / Cijena</th>
+                <th style="width: 15%">Total / Iznos ({faktura.valuta})</th>
             </tr>
         </thead>
         <tbody>
             {stavke_html}
             <tr class="total-row">
                 <td colspan="5" style="text-align: right; border: 1px solid #000; padding: 10px;">
-                    <strong>Total price in {faktura.valuta}:</strong>
+                    TOTAL / UKUPNO ZA UPLATU:
                 </td>
-                <td style="text-align: right; border: 1px solid #000; padding: 10px;">
-                    <strong>{faktura.ukupno_bez_pdv:.2f}</strong>
+                <td style="text-align: right; border: 1px solid #000; padding: 10px; color: #1e40af;">
+                    {faktura.ukupno_sa_pdv:,.2f} {faktura.valuta}
                 </td>
             </tr>
         </tbody>
     </table>
     
-    <!-- Potpis -->
-    <div style="margin-top: 60px;">
-        <div>"{faktura.izdavalac_naziv}":</div>
-        <div style="margin-top: 60px; display: inline-block; width: 200px; border-bottom: 1px solid #000; text-align: center;">
-            M.P.
-        </div>
+    <div style="margin-top: 20px; font-style: italic; font-size: 9pt;">
+        Napomena: PDV nije obračunat prema članu 44. stav 1. Zakona o PDV-u (Mali obveznik).<br>
+        <em>Note: VAT not charged according to local tax regulations for small businesses.</em>
+    </div>
+
+    <table style="width: 100%; margin-top: 60px;">
+        <tr>
+            <td style="width: 50%;">
+                <div style="border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px;">
+                    Issued by / Fakturisao
+                </div>
+            </td>
+            <td style="width: 50%; text-align: right;">
+                <div style="display: inline-block; border: 1px dashed #ccc; padding: 20px; text-align: center;">
+                    L.S. / M.P.
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        Generated by ePauša RS - Softver za preduzetnike
     </div>
 </body>
 </html>"""
