@@ -33,7 +33,7 @@
             <i class="fas fa-sliders-h mr-2 text-blue-600"></i>
             Sistemski Parametri
         </h2>
-        
+
         <!-- Success Message -->
         {% if messages %}
         <div class="mb-4">
@@ -46,10 +46,10 @@
             {% endfor %}
         </div>
         {% endif %}
-        
+
         <form method="post" action="{% url 'admin_parametri_update' %}">
             {% csrf_token %}
-            
+
             <!-- Doprinosi -->
             <div class="mb-6">
                 <div class="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
@@ -57,19 +57,15 @@
                         <i class="fas fa-wallet mr-2 text-blue-600"></i>
                         Mjesečni Doprinosi (KM)
                     </label>
-                    <input type="number" 
-                           name="mjesecni_doprinosi" 
-                           id="mjesecni_doprinosi" 
-                           step="0.01" 
-                           min="0"
-                           value="{{ parametri.mjesecni_doprinosi }}"
-                           class="w-full px-4 py-3 text-3xl font-bold text-blue-600 border-2 border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500">
+                    <input type="number" name="mjesecni_doprinosi" id="mjesecni_doprinosi" step="0.01" min="0"
+                        value="{{ parametri.mjesecni_doprinosi }}"
+                        class="w-full px-4 py-3 text-3xl font-bold text-blue-600 border-2 border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500">
                     <p class="text-sm text-gray-600 mt-2">
                         Iznos koji se plaća mjesečno za lične doprinose
                     </p>
                 </div>
             </div>
-            
+
             <!-- NOVO - Prag za malog preduzetnika -->
             <div class="mb-6">
                 <div class="bg-yellow-50 rounded-lg p-6 border-2 border-yellow-200">
@@ -77,24 +73,20 @@
                         <i class="fas fa-chart-line mr-2 text-yellow-600"></i>
                         Prag za Malog Preduzetnika (KM godišnje)
                     </label>
-                    <input type="number" 
-                           name="prag_mali_preduzetnik" 
-                           id="prag_mali" 
-                           step="0.01" 
-                           min="0"
-                           value="{{ parametri.prag_mali_preduzetnik }}"
-                           class="w-full px-4 py-3 text-3xl font-bold text-yellow-600 border-2 border-yellow-300 rounded-md focus:ring-2 focus:ring-yellow-500">
+                    <input type="number" name="prag_mali_preduzetnik" id="prag_mali" step="0.01" min="0"
+                        value="{{ parametri.prag_mali_preduzetnik }}"
+                        class="w-full px-4 py-3 text-3xl font-bold text-yellow-600 border-2 border-yellow-300 rounded-md focus:ring-2 focus:ring-yellow-500">
                     <p class="text-sm text-gray-600 mt-2">
                         <i class="fas fa-info-circle mr-1"></i>
                         Do ovog iznosa godišnjeg prihoda važi stopa 2%, preko ovog iznosa 10%
                     </p>
                 </div>
             </div>
-            
+
             <!-- Poreske Stope -->
             <div class="mb-6">
                 <h4 class="font-bold text-gray-700 mb-3">Poreske Stope</h4>
-                
+
                 <div class="grid md:grid-cols-2 gap-4">
                     <!-- Mali preduzetnik -->
                     <div class="bg-green-50 rounded-lg p-4 border-2 border-green-200">
@@ -102,32 +94,24 @@
                             <i class="fas fa-percentage mr-1"></i>
                             Mali preduzetnik (%)
                         </label>
-                        <input type="number" 
-                               name="porez_mali_preduzetnik" 
-                               id="porez_mali" 
-                               step="0.01" 
-                               min="0"
-                               value="{{ parametri.porez_mali_preduzetnik }}"
-                               class="w-full px-4 py-2 text-2xl font-bold text-green-600 border border-green-300 rounded-md">
+                        <input type="number" name="porez_mali_preduzetnik" id="porez_mali" step="0.01" min="0"
+                            value="{{ parametri.porez_mali_preduzetnik }}"
+                            class="w-full px-4 py-2 text-2xl font-bold text-green-600 border border-green-300 rounded-md">
                         <p class="text-xs text-green-700 mt-2">
                             <i class="fas fa-calendar-alt mr-1"></i>
                             Plaća se <b>mjesečno</b>
                         </p>
                     </div>
-                    
+
                     <!-- Veliki preduzetnik -->
                     <div class="bg-purple-50 rounded-lg p-4 border-2 border-purple-200">
                         <label for="porez_veliki" class="block text-sm font-medium text-purple-800 mb-2">
                             <i class="fas fa-percentage mr-1"></i>
                             Veliki preduzetnik (%)
                         </label>
-                        <input type="number" 
-                               name="porez_veliki_preduzetnik" 
-                               id="porez_veliki" 
-                               step="0.01" 
-                               min="0"
-                               value="{{ parametri.porez_veliki_preduzetnik }}"
-                               class="w-full px-4 py-2 text-2xl font-bold text-purple-600 border border-purple-300 rounded-md">
+                        <input type="number" name="porez_veliki_preduzetnik" id="porez_veliki" step="0.01" min="0"
+                            value="{{ parametri.porez_veliki_preduzetnik }}"
+                            class="w-full px-4 py-2 text-2xl font-bold text-purple-600 border border-purple-300 rounded-md">
                         <p class="text-xs text-purple-700 mt-2">
                             <i class="fas fa-calendar mr-1"></i>
                             Plaća se <b>jednom godišnje</b> u martu
@@ -135,7 +119,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Mjesec plaćanja -->
             <div class="mb-6">
                 <div class="bg-orange-50 rounded-lg p-4 border-2 border-orange-200">
@@ -143,46 +127,57 @@
                         <i class="fas fa-calendar-day mr-2 text-orange-600"></i>
                         Mjesec plaćanja godišnjeg poreza (veliki preduzetnik)
                     </label>
-                    <select name="mjesec_placanja_poreza" 
-                            id="mjesec_placanja" 
-                            class="w-full px-4 py-2 text-lg border-2 border-orange-300 rounded-md">
-                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar</option>
-                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar</option>
-                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart</option>
-                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April</option>
-                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj</option>
-                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun</option>
-                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul</option>
-                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust</option>
-                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar</option>
-                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar</option>
-                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 - Novembar</option>
-                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 - Decembar</option>
+                    <select name="mjesec_placanja_poreza" id="mjesec_placanja"
+                        class="w-full px-4 py-2 text-lg border-2 border-orange-300 rounded-md">
+                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar
+                        </option>
+                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar
+                        </option>
+                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart
+                        </option>
+                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April
+                        </option>
+                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj
+                        </option>
+                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun
+                        </option>
+                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul
+                        </option>
+                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust
+                        </option>
+                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar
+                        </option>
+                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar
+                        </option>
+                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 -
+                            Novembar</option>
+                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 -
+                            Decembar</option>
                     </select>
                 </div>
             </div>
-            
+
             <!-- Metadata Info -->
             {% if parametri.zadnje_azurirano %}
             <div class="bg-gray-100 rounded-lg p-3 mb-6 text-sm text-gray-600">
                 <i class="fas fa-info-circle mr-2"></i>
                 Zadnje ažurirano: <b>{{ parametri.zadnje_azurirano|date:"d.m.Y H:i" }}</b>
                 {% if parametri.azurirao %}
-                    od <b>{{ parametri.azurirao.username }}</b>
+                od <b>{{ parametri.azurirao.username }}</b>
                 {% endif %}
             </div>
             {% endif %}
-            
+
             <!-- Submit -->
             <div class="flex justify-end gap-3">
-                <button type="button" 
-                        onclick="location.reload()"
-                        class="px-6 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-md transition">
+                <button type="button" onclick="location.reload()"
+                    class="px-6 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-md transition">
                     <i class="fas fa-times mr-2"></i>
                     Otkaži
                 </button>
-                
-                <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition font-medium">
+
+                <button type="submit"
+                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition font-medium">
                     <i class="fas fa-save mr-2"></i>
                     Sačuvaj Parametre
                 </button>
@@ -225,24 +220,56 @@
             <table class="w-full">
                 <thead class="bg-gray-100">
                     <tr>
-                        <th class="px-4 py-2 text-left">Ime</th>
-                        <th class="px-4 py-2 text-left">Email</th>
+                        <th class="px-4 py-2 text-left">Korisnik / Email</th>
                         <th class="px-4 py-2 text-left">Plan</th>
                         <th class="px-4 py-2 text-left">JIB</th>
+                        <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-left">Član od</th>
+                        <th class="px-4 py-2 text-left">Pretplata/Trial ističe</th>
                         <th class="px-4 py-2 text-center">Akcije</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for korisnik in korisnici %}
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="px-4 py-3 font-medium">{{ korisnik.ime }}</td>
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ korisnik.user.email }}</td>
+                        <td class="px-4 py-3 font-medium">
+                            <div class="text-gray-900">{{ korisnik.ime }}</div>
+                            <div class="text-xs text-gray-500 font-normal">{{ korisnik.user.email }}</div>
+                        </td>
                         <td class="px-4 py-3">
-                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
                                 {{ korisnik.plan }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm font-mono">{{ korisnik.jib }}</td>
+                        <td class="px-4 py-3 text-sm font-mono text-gray-700">
+                            {{ korisnik.jib }}
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if korisnik.vrsta_pretplate == "TRIAL" %}
+                            <span
+                                class="px-2 py-1 bg-yellow-100 text-yellow-800 border border-yellow-200 rounded text-xs font-bold uppercase">
+                                <i class="fas fa-clock mr-1"></i> Trial
+                            </span>
+                            {% else %}
+                            <span
+                                class="px-2 py-1 bg-green-100 text-green-800 border border-green-200 rounded text-xs font-bold uppercase">
+                                <i class="fas fa-check-circle mr-1"></i> Paid
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-600">
+                            {{ korisnik.registrovan|date:"d.m.Y" }}
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            {% if korisnik.vrsta_pretplate == "TRIAL" %}
+                            <span class="text-orange-600 font-medium">
+                                {{ korisnik.trial_istice|date:"d.m.Y" }}
+                                <span class="text-xs text-orange-400">({{ korisnik.preostalo_dana }} d.)</span>
+                            </span>
+                            {% else %}
+                            <span class="text-green-600 font-medium">Aktivna (Plaćeno)</span>
+                            {% endif %}
+                        </td>
                         <td class="px-4 py-3 text-center">
                             <a href="{% url 'admin_login_as' korisnik.user.id %}"
                                 class="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
@@ -252,7 +279,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
                             <p>Nema rezultata za pretragu "{{ search_query }}"</p>
                         </td>
