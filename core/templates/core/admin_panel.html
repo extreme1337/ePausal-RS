@@ -120,18 +120,30 @@
                     </label>
                     <select name="mjesec_placanja_poreza" id="mjesec_placanja"
                         class="w-full px-4 py-2 text-lg border-2 border-orange-300 rounded-md">
-                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar</option>
-                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar</option>
-                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart</option>
-                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April</option>
-                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj</option>
-                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun</option>
-                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul</option>
-                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust</option>
-                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar</option>
-                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar</option>
-                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 - Novembar</option>
-                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 - Decembar</option>
+                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar
+                        </option>
+                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar
+                        </option>
+                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart
+                        </option>
+                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April
+                        </option>
+                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj
+                        </option>
+                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun
+                        </option>
+                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul
+                        </option>
+                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust
+                        </option>
+                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar
+                        </option>
+                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar
+                        </option>
+                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 -
+                            Novembar</option>
+                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 -
+                            Decembar</option>
                     </select>
                 </div>
             </div>
@@ -654,9 +666,13 @@
     }
 
     function editBanka(id) {
-        fetch(`/admin/banka/${id}/`)
-            .then(r => r.json())
+        fetch(`/admin-panel/banka/${id}/`)
+            .then(r => {
+                console.log('Response:', r);
+                return r.json();
+            })
             .then(data => {
+                console.log('Data:', data);
                 document.getElementById('modalTitle').textContent = 'Izmijeni Banku';
                 document.getElementById('banka_id').value = data.id;
                 document.getElementById('naziv').value = data.naziv;
@@ -671,12 +687,16 @@
                 document.getElementById('svrha_porez_template').value = data.svrha_porez_template;
                 document.getElementById('aktivna').checked = data.aktivna;
                 document.getElementById('bankaModal').classList.remove('hidden');
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Greška pri učitavanju banke');
             });
     }
 
     function toggleBanka(id) {
         if (confirm('Promijeniti status banke?')) {
-            fetch(`/admin/banka/${id}/toggle/`, {
+            fetch(`/admin-panel/banka/${id}/toggle/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
@@ -691,7 +711,7 @@
 
     function deleteBanka(id) {
         if (confirm('Da li ste sigurni da želite obrisati ovu banku?')) {
-            fetch(`/admin/banka/${id}/delete/`, {
+            fetch(`/admin-panel/banka/${id}/delete/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             })
