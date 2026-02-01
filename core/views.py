@@ -1340,6 +1340,7 @@ def admin_panel(request):
 
     tab = request.GET.get("tab", "users")
     search_query = request.GET.get("search", "").strip()
+    log_search = request.GET.get("log_search", "").strip()
 
     # Dohvatanje korisnika
     korisnici = Korisnik.objects.all().select_related("user")
@@ -1350,30 +1351,44 @@ def admin_panel(request):
         korisnici = korisnici.filter(
             Q(ime__icontains=search_query)
             | Q(user__email__icontains=search_query)
+            | Q(user__first_name__icontains=search_query)
+            | Q(user__last_name__icontains=search_query)
             | Q(jib__icontains=search_query)
         )
 
-    # --- LOGIKA ZA TRIAL/PAID (DODATO) ---
+    # --- LOGIKA ZA TRIAL/PAID ---
     today = timezone.now().date()
     for k in korisnici:
-        # Svaki plan ima 30 dana triala od dana registracije
         k.datum_isteka_triala = k.registrovan + timedelta(days=30)
-
         if today <= k.datum_isteka_triala:
             k.je_trial = True
             k.status_label = "Trial"
-            # Izračunaj preostale dane
             preostalo = (k.datum_isteka_triala - today).days
             k.dani_info = f"Još {preostalo} dana"
         else:
             k.je_trial = False
             k.status_label = "Paid"
             k.dani_info = "Aktivna licenca"
-    # -------------------------------------
 
-    logs = SystemLog.objects.all()[:100]
+    logs = SystemLog.objects.all()
+
+    if log_search:
+        from django.db.models import Q
+
+        logs = logs.filter(
+            Q(user__email__icontains=log_search)
+            | Q(user__username__icontains=log_search)
+            | Q(action__icontains=log_search)
+            | Q(ip_address__icontains=log_search)
+            | Q(details__icontains=log_search)
+        )
+
+    logs = logs[:100]  # Limit
+
     failed = FailedRequest.objects.all()
     parametri = SistemskiParametri.get_parametri()
+
+    banke = Banka.objects.all().order_by("-aktivna", "naziv")
 
     context = {
         "korisnici": korisnici,
@@ -1381,7 +1396,9 @@ def admin_panel(request):
         "failed_requests": failed,
         "active_tab": tab,
         "search_query": search_query,
+        "log_search": log_search,
         "parametri": parametri,
+        "banke": banke,
     }
 
     return render(request, "core/admin_panel.html", context)
@@ -1470,5 +1487,105 @@ def skip_failed_request(request, request_id):
 
     failed_req = get_object_or_404(FailedRequest, id=request_id)
     failed_req.delete()
+
+    return JsonResponse({"success": True})
+
+
+# ============================================
+# BANKE - CRUD (SAMO ZA ADMIN)
+# ============================================
+
+
+@login_required
+def admin_banka_save(request):
+    """Kreiranje ili izmjena banke"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    if request.method == "POST":
+        banka_id = request.POST.get("banka_id", "")
+
+        if banka_id:
+            banka = get_object_or_404(Banka, pk=banka_id)
+        else:
+            banka = Banka()
+
+        # Popuni podatke (bez model polja)
+        banka.naziv = request.POST.get("naziv")
+        banka.skraceni_naziv = request.POST.get("skraceni_naziv")
+        banka.racun_doprinosi = request.POST.get("racun_doprinosi")
+        banka.racun_porez = request.POST.get("racun_porez")
+        banka.primalac_doprinosi = request.POST.get("primalac_doprinosi")
+        banka.primalac_porez = request.POST.get("primalac_porez")
+        banka.poziv_doprinosi = request.POST.get("poziv_doprinosi", "")
+        banka.poziv_porez = request.POST.get("poziv_porez", "")
+        banka.svrha_doprinosi_template = request.POST.get("svrha_doprinosi_template")
+        banka.svrha_porez_template = request.POST.get("svrha_porez_template")
+        banka.aktivna = request.POST.get("aktivna") == "on"
+
+        banka.save()
+
+        action = "izmijenjene" if banka_id else "dodane"
+        messages.success(request, f'✅ Banka "{banka.naziv}" uspješno {action}!')
+        return redirect("/admin-panel/?tab=banke")
+
+    return redirect("/admin-panel/?tab=banke")
+
+
+@login_required
+def admin_banka_get(request, banka_id):
+    """Preuzmi podatke o banci (za edit modal)"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    banka = get_object_or_404(Banka, pk=banka_id)
+
+    data = {
+        "id": banka.id,
+        "naziv": banka.naziv,
+        "skraceni_naziv": banka.skraceni_naziv,
+        "racun_doprinosi": banka.racun_doprinosi,
+        "racun_porez": banka.racun_porez,
+        "primalac_doprinosi": banka.primalac_doprinosi,
+        "primalac_porez": banka.primalac_porez,
+        "model_doprinosi": banka.model_doprinosi,
+        "model_porez": banka.model_porez,
+        "svrha_doprinosi_template": banka.svrha_doprinosi_template,
+        "svrha_porez_template": banka.svrha_porez_template,
+        "aktivna": banka.aktivna,
+    }
+
+    return JsonResponse(data)
+
+
+@login_required
+@require_http_methods(["POST"])
+def admin_banka_toggle(request, banka_id):
+    """Aktiviraj/Deaktiviraj banku"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    banka = get_object_or_404(Banka, pk=banka_id)
+    banka.aktivna = not banka.aktivna
+    banka.save()
+
+    status = "aktivirana" if banka.aktivna else "deaktivirana"
+    messages.success(request, f'✅ Banka "{banka.naziv}" {status}!')
+
+    return JsonResponse({"success": True, "aktivna": banka.aktivna})
+
+
+@login_required
+@require_http_methods(["POST"])
+def admin_banka_delete(request, banka_id):
+    """Obriši banku"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    banka = get_object_or_404(Banka, pk=banka_id)
+    naziv = banka.naziv
+    banka.delete()
+
+    messages.success(request, f'🗑️ Banka "{naziv}" obrisana!')
 
     return JsonResponse({"success": True})

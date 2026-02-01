@@ -195,12 +195,12 @@ class Faktura(models.Model):
         self.ukupno_bez_pdv = ukupno_bez_pdv
         self.pdv_iznos = pdv_iznos
         self.ukupno_sa_pdv = ukupno_sa_pdv
-        
+
         # KLJUČNA ISPRAVKA: Postavljanje polja koja utils.py koristi za PDF
         self.ukupno_iznos = ukupno_sa_pdv
         # Koristimo self.valuta umjesto fiksnog "BAM"
         self.ukupno_tekst = f"{ukupno_sa_pdv:.2f} {self.valuta}"
-        
+
         self.save()
 
         return {
@@ -208,7 +208,7 @@ class Faktura(models.Model):
             "pdv_iznos": pdv_iznos,
             "ukupno_sa_pdv": ukupno_sa_pdv,
             "ukupno_tekst": self.ukupno_tekst,
-            "valuta": self.valuta
+            "valuta": self.valuta,
         }
 
 
@@ -662,3 +662,108 @@ class SistemskiParametri(models.Model):
         # Dozvoli samo jedan red
         self.pk = 1
         super().save(*args, **kwargs)
+
+
+# core/models.py - DODAJ OVE MODELE NA KRAJ
+
+
+class Banka(models.Model):
+    """Banke u Republici Srpskoj"""
+
+    naziv = models.CharField(max_length=200, verbose_name="Naziv banke")
+    skraceni_naziv = models.CharField(max_length=50, verbose_name="Skraćeni naziv")
+
+    # Računi - DVA obavezna računa
+    racun_doprinosi = models.CharField(
+        max_length=30,
+        verbose_name="Račun za doprinose",
+        help_text="Račun Poreske uprave za uplate doprinosa",
+    )
+
+    racun_porez = models.CharField(
+        max_length=30,
+        verbose_name="Račun za porez",
+        help_text="Račun Poreske uprave za uplate poreza",
+    )
+
+    # Primalac (obično isti za obe uplate)
+    primalac_doprinosi = models.CharField(
+        max_length=300,
+        default="PORESKA UPRAVA REPUBLIKE SRPSKE",
+        verbose_name="Primalac - Doprinosi",
+    )
+
+    primalac_porez = models.CharField(
+        max_length=300,
+        default="PORESKA UPRAVA REPUBLIKE SRPSKE",
+        verbose_name="Primalac - Porez",
+    )
+
+    # Pozivi na broj (ako se razlikuju)
+    poziv_doprinosi = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Poziv na broj (doprinosi)",
+        help_text="Ako je različit od JIB-a",
+    )
+
+    poziv_porez = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Poziv na broj (porez)",
+        help_text="Ako je različit od JIB-a",
+    )
+
+    # Svrha (template sa {mjesec} i {godina})
+    svrha_doprinosi_template = models.CharField(
+        max_length=200,
+        default="Lični doprinosi za {mjesec}/{godina}",
+        verbose_name="Template svrhe - Doprinosi",
+        help_text="Koristi {mjesec} i {godina} za dinamički tekst",
+    )
+
+    svrha_porez_template = models.CharField(
+        max_length=200,
+        default="Porez na prihod za {godina}",
+        verbose_name="Template svrhe - Porez",
+    )
+
+    # Status
+    aktivna = models.BooleanField(default=True, verbose_name="Aktivna")
+
+    # Metadata
+    datum_kreiranja = models.DateTimeField(auto_now_add=True)
+    zadnje_azurirano = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.naziv
+
+    class Meta:
+        ordering = ["naziv"]
+        verbose_name = "Banka"
+        verbose_name_plural = "Banke"
+
+    def get_racun_za_vrstu(self, vrsta):
+        """Vraća pravi račun za vrstu uplate"""
+        if vrsta == "doprinosi":
+            return self.racun_doprinosi
+        elif vrsta == "porez":
+            return self.racun_porez
+        return self.racun_doprinosi
+
+    def get_primalac_za_vrstu(self, vrsta):
+        """Vraća primaoca za vrstu uplate"""
+        if vrsta == "doprinosi":
+            return self.primalac_doprinosi
+        elif vrsta == "porez":
+            return self.primalac_porez
+        return self.primalac_doprinosi
+
+    def get_svrhu_za_vrstu(self, vrsta, mjesec, godina):
+        """Generiši svrhu uplate sa dinamičkim podacima"""
+        if vrsta == "doprinosi":
+            template = self.svrha_doprinosi_template
+        else:
+            template = self.svrha_porez_template
+
+        return template.format(mjesec=mjesec, godina=godina)

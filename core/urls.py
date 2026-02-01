@@ -85,5 +85,22 @@ urlpatterns = [
         views.skip_failed_request,
         name="skip_request",
     ),
-    path('admin-panel/parametri/update/', views.admin_parametri_update, name='admin_parametri_update'),
+    # Banke CRUD (samo admin)
+    path("admin/banka/save/", views.admin_banka_save, name="admin_banka_save"),
+    path("admin/banka/<int:banka_id>/", views.admin_banka_get, name="admin_banka_get"),
+    path(
+        "admin/banka/<int:banka_id>/toggle/",
+        views.admin_banka_toggle,
+        name="admin_banka_toggle",
+    ),
+    path(
+        "admin/banka/<int:banka_id>/delete/",
+        views.admin_banka_delete,
+        name="admin_banka_delete",
+    ),
+    path(
+        "admin-panel/parametri/update/",
+        views.admin_parametri_update,
+        name="admin_parametri_update",
+    ),
 ]

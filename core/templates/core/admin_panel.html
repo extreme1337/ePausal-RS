@@ -16,6 +16,10 @@
                 class="px-6 py-3 {% if active_tab == 'parametri' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
                 <i class="fas fa-cog mr-2"></i>Parametri
             </a>
+            <a href="?tab=banke"
+                class="px-6 py-3 {% if active_tab == 'banke' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
+                <i class="fas fa-university mr-2"></i>Banke
+            </a>
             <a href="?tab=logs"
                 class="px-6 py-3 {% if active_tab == 'logs' %}text-blue-600 border-b-2 border-blue-600{% endif %}">
                 Logs
@@ -33,19 +37,6 @@
             <i class="fas fa-sliders-h mr-2 text-blue-600"></i>
             Sistemski Parametri
         </h2>
-
-        <!-- Success Message -->
-        {% if messages %}
-        <div class="mb-4">
-            {% for message in messages %}
-            <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-2">
-                <p class="text-green-700">
-                    <i class="fas fa-check-circle mr-2"></i>{{ message }}
-                </p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
 
         <form method="post" action="{% url 'admin_parametri_update' %}">
             {% csrf_token %}
@@ -66,7 +57,7 @@
                 </div>
             </div>
 
-            <!-- NOVO - Prag za malog preduzetnika -->
+            <!-- Prag za malog preduzetnika -->
             <div class="mb-6">
                 <div class="bg-yellow-50 rounded-lg p-6 border-2 border-yellow-200">
                     <label for="prag_mali" class="block text-sm font-medium text-gray-700 mb-3">
@@ -129,35 +120,23 @@
                     </label>
                     <select name="mjesec_placanja_poreza" id="mjesec_placanja"
                         class="w-full px-4 py-2 text-lg border-2 border-orange-300 rounded-md">
-                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar
-                        </option>
-                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar
-                        </option>
-                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart
-                        </option>
-                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April
-                        </option>
-                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj
-                        </option>
-                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun
-                        </option>
-                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul
-                        </option>
-                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust
-                        </option>
-                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar
-                        </option>
-                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar
-                        </option>
-                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 -
-                            Novembar</option>
-                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 -
-                            Decembar</option>
+                        <option value="1" {% if parametri.mjesec_placanja_poreza == 1 %}selected{% endif %}>1 - Januar</option>
+                        <option value="2" {% if parametri.mjesec_placanja_poreza == 2 %}selected{% endif %}>2 - Februar</option>
+                        <option value="3" {% if parametri.mjesec_placanja_poreza == 3 %}selected{% endif %}>3 - Mart</option>
+                        <option value="4" {% if parametri.mjesec_placanja_poreza == 4 %}selected{% endif %}>4 - April</option>
+                        <option value="5" {% if parametri.mjesec_placanja_poreza == 5 %}selected{% endif %}>5 - Maj</option>
+                        <option value="6" {% if parametri.mjesec_placanja_poreza == 6 %}selected{% endif %}>6 - Jun</option>
+                        <option value="7" {% if parametri.mjesec_placanja_poreza == 7 %}selected{% endif %}>7 - Jul</option>
+                        <option value="8" {% if parametri.mjesec_placanja_poreza == 8 %}selected{% endif %}>8 - Avgust</option>
+                        <option value="9" {% if parametri.mjesec_placanja_poreza == 9 %}selected{% endif %}>9 - Septembar</option>
+                        <option value="10" {% if parametri.mjesec_placanja_poreza == 10 %}selected{% endif %}>10 - Oktobar</option>
+                        <option value="11" {% if parametri.mjesec_placanja_poreza == 11 %}selected{% endif %}>11 - Novembar</option>
+                        <option value="12" {% if parametri.mjesec_placanja_poreza == 12 %}selected{% endif %}>12 - Decembar</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Metadata Info -->
+            <!-- Metadata -->
             {% if parametri.zadnje_azurirano %}
             <div class="bg-gray-100 rounded-lg p-3 mb-6 text-sm text-gray-600">
                 <i class="fas fa-info-circle mr-2"></i>
@@ -186,6 +165,274 @@
     </div>
     {% endif %}
 
+    {% if active_tab == 'banke' %}
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-university mr-2 text-blue-600"></i>
+                Banke i Računi
+            </h2>
+            <button onclick="openAddBankaModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">
+                <i class="fas fa-plus mr-2"></i>
+                Dodaj Banku
+            </button>
+        </div>
+
+        <!-- Info box -->
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+            <p class="text-sm text-blue-700">
+                <i class="fas fa-info-circle mr-2"></i>
+                Svaka banka mora imati <b>2 računa</b>: jedan za <b>doprinose</b> i drugi za <b>porez</b>.
+            </p>
+        </div>
+
+        <!-- Lista banaka -->
+        <div class="space-y-4">
+            {% for banka in banke %}
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">{{ banka.naziv }}</h3>
+                        <p class="text-sm text-gray-500">{{ banka.skraceni_naziv }}</p>
+                    </div>
+                    <div>
+                        {% if banka.aktivna %}
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                            <i class="fas fa-check-circle mr-1"></i> Aktivna
+                        </span>
+                        {% else %}
+                        <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+                            <i class="fas fa-times-circle mr-1"></i> Neaktivna
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Računi -->
+                <div class="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
+                    <!-- Doprinosi -->
+                    <div class="bg-purple-50 border-l-4 border-purple-400 p-3 rounded">
+                        <h4 class="font-bold text-purple-800 mb-2 text-sm">
+                            <i class="fas fa-user-shield mr-1"></i> DOPRINOSI
+                        </h4>
+                        <p class="text-xs text-gray-600 mb-1">Primalac:</p>
+                        <p class="font-medium text-sm mb-2">{{ banka.primalac_doprinosi }}</p>
+                        <p class="text-xs text-gray-600 mb-1">Račun:</p>
+                        <p class="font-mono text-sm font-bold text-purple-600">{{ banka.racun_doprinosi }}</p>
+                        {% if banka.poziv_doprinosi %}
+                        <p class="text-xs text-gray-500 mt-2">Poziv: {{ banka.poziv_doprinosi }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Porez -->
+                    <div class="bg-orange-50 border-l-4 border-orange-400 p-3 rounded">
+                        <h4 class="font-bold text-orange-800 mb-2 text-sm">
+                            <i class="fas fa-percentage mr-1"></i> POREZ
+                        </h4>
+                        <p class="text-xs text-gray-600 mb-1">Primalac:</p>
+                        <p class="font-medium text-sm mb-2">{{ banka.primalac_porez }}</p>
+                        <p class="text-xs text-gray-600 mb-1">Račun:</p>
+                        <p class="font-mono text-sm font-bold text-orange-600">{{ banka.racun_porez }}</p>
+                        {% if banka.poziv_porez %}
+                        <p class="text-xs text-gray-500 mt-2">Poziv: {{ banka.poziv_porez }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Akcije -->
+                <div class="flex justify-end gap-2 mt-3">
+                    <button onclick="editBanka({{ banka.id }})" class="text-blue-600 hover:text-blue-800 px-3 py-1">
+                        <i class="fas fa-edit mr-1"></i> Izmijeni
+                    </button>
+                    <button onclick="toggleBanka({{ banka.id }})" class="text-gray-600 hover:text-gray-800 px-3 py-1">
+                        <i class="fas fa-{% if banka.aktivna %}eye-slash{% else %}eye{% endif %} mr-1"></i>
+                        {% if banka.aktivna %}Deaktiviraj{% else %}Aktiviraj{% endif %}
+                    </button>
+                    <button onclick="deleteBanka({{ banka.id }})" class="text-red-600 hover:text-red-800 px-3 py-1">
+                        <i class="fas fa-trash mr-1"></i> Obriši
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-12 text-gray-500">
+                <i class="fas fa-university fa-4x mb-4 text-gray-300"></i>
+                <p class="text-lg mb-2">Nema dodanih banaka</p>
+                <button onclick="openAddBankaModal()" class="text-blue-600 hover:underline">
+                    Dodaj prvu banku
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Modal za dodavanje/izmjenu banke -->
+    <div id="bankaModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
+                <h3 class="text-xl font-bold">
+                    <i class="fas fa-university mr-2"></i>
+                    <span id="modalTitle">Dodaj Novu Banku</span>
+                </h3>
+                <button onclick="closeBankaModal()" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <form id="bankaForm" method="post" action="{% url 'admin_banka_save' %}" class="p-6">
+                {% csrf_token %}
+                <input type="hidden" id="banka_id" name="banka_id">
+
+                <!-- Osnovni podaci -->
+                <div class="mb-6">
+                    <h4 class="font-bold text-gray-700 mb-3 pb-2 border-b">
+                        <i class="fas fa-info-circle mr-2 text-blue-600"></i>
+                        Osnovni Podaci
+                    </h4>
+
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Naziv banke *
+                            </label>
+                            <input type="text" name="naziv" id="naziv" required placeholder="NLB Banka a.d. Banja Luka"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Skraćeni naziv *
+                            </label>
+                            <input type="text" name="skraceni_naziv" id="skraceni_naziv" required placeholder="NLB"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DOPRINOSI -->
+                <div class="mb-6">
+                    <h4 class="font-bold text-purple-700 mb-3 pb-2 border-b border-purple-200">
+                        <i class="fas fa-user-shield mr-2"></i>
+                        Račun za Doprinose
+                    </h4>
+
+                    <div class="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                        <div class="grid md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Primalac *
+                                </label>
+                                <input type="text" name="primalac_doprinosi" id="primalac_doprinosi" required
+                                    value="PORESKA UPRAVA REPUBLIKE SRPSKE"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Račun *
+                                </label>
+                                <input type="text" name="racun_doprinosi" id="racun_doprinosi" required
+                                    placeholder="5551111111111111" maxlength="30"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Poziv na broj (opciono)
+                                </label>
+                                <input type="text" name="poziv_doprinosi" id="poziv_doprinosi" maxlength="50"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Svrha (template)
+                                </label>
+                                <input type="text" name="svrha_doprinosi_template" id="svrha_doprinosi_template"
+                                    value="Lični doprinosi za {mjesec}/{godina}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <p class="text-xs text-gray-500 mt-1">Koristi {mjesec} i {godina}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POREZ -->
+                <div class="mb-6">
+                    <h4 class="font-bold text-orange-700 mb-3 pb-2 border-b border-orange-200">
+                        <i class="fas fa-percentage mr-2"></i>
+                        Račun za Porez
+                    </h4>
+
+                    <div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                        <div class="grid md:grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Primalac *
+                                </label>
+                                <input type="text" name="primalac_porez" id="primalac_porez" required
+                                    value="PORESKA UPRAVA REPUBLIKE SRPSKE"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Račun *
+                                </label>
+                                <input type="text" name="racun_porez" id="racun_porez" required
+                                    placeholder="5552222222222222" maxlength="30"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md font-mono">
+                            </div>
+                        </div>
+
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Poziv na broj (opciono)
+                                </label>
+                                <input type="text" name="poziv_porez" id="poziv_porez" maxlength="50"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Svrha (template)
+                                </label>
+                                <input type="text" name="svrha_porez_template" id="svrha_porez_template"
+                                    value="Porez na prihod za {godina}"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                                <p class="text-xs text-gray-500 mt-1">Koristi {mjesec} i {godina}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status -->
+                <div class="mb-6">
+                    <label class="flex items-center">
+                        <input type="checkbox" name="aktivna" id="aktivna" checked
+                            class="w-4 h-4 text-blue-600 rounded">
+                        <span class="ml-2 text-sm text-gray-700">Aktivna banka</span>
+                    </label>
+                </div>
+
+                <!-- Dugmad -->
+                <div class="flex justify-end gap-3 pt-4 border-t">
+                    <button type="button" onclick="closeBankaModal()"
+                        class="px-6 py-2 bg-gray-400 hover:bg-gray-500 text-white rounded-md">
+                        Otkaži
+                    </button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md">
+                        <i class="fas fa-save mr-2"></i>
+                        Sačuvaj
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     {% if active_tab == 'users' %}
     <div class="bg-white rounded-lg shadow-md p-6">
         <!-- Pretraga -->
@@ -194,7 +441,7 @@
                 <input type="hidden" name="tab" value="users">
                 <div class="flex-1">
                     <input type="text" name="search" value="{{ search_query }}"
-                        placeholder="🔎 Pretraži po imenu, emailu ili agenciji..."
+                        placeholder="🔎 Pretraži po imenu, emailu ili JIB-u..."
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -220,56 +467,24 @@
             <table class="w-full">
                 <thead class="bg-gray-100">
                     <tr>
-                        <th class="px-4 py-2 text-left">Korisnik / Email</th>
+                        <th class="px-4 py-2 text-left">Ime</th>
+                        <th class="px-4 py-2 text-left">Email</th>
                         <th class="px-4 py-2 text-left">Plan</th>
                         <th class="px-4 py-2 text-left">JIB</th>
-                        <th class="px-4 py-2 text-left">Status</th>
-                        <th class="px-4 py-2 text-left">Član od</th>
-                        <th class="px-4 py-2 text-left">Pretplata/Trial ističe</th>
                         <th class="px-4 py-2 text-center">Akcije</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for korisnik in korisnici %}
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="px-4 py-3 font-medium">
-                            <div class="text-gray-900">{{ korisnik.ime }}</div>
-                            <div class="text-xs text-gray-500 font-normal">{{ korisnik.user.email }}</div>
-                        </td>
+                        <td class="px-4 py-3 font-medium">{{ korisnik.ime }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">{{ korisnik.user.email }}</td>
                         <td class="px-4 py-3">
-                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">
+                            <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
                                 {{ korisnik.plan }}
                             </span>
                         </td>
-                        <td class="px-4 py-3 text-sm font-mono text-gray-700">
-                            {{ korisnik.jib }}
-                        </td>
-                        <td class="px-4 py-3">
-                            {% if korisnik.vrsta_pretplate == "TRIAL" %}
-                            <span
-                                class="px-2 py-1 bg-yellow-100 text-yellow-800 border border-yellow-200 rounded text-xs font-bold uppercase">
-                                <i class="fas fa-clock mr-1"></i> Trial
-                            </span>
-                            {% else %}
-                            <span
-                                class="px-2 py-1 bg-green-100 text-green-800 border border-green-200 rounded text-xs font-bold uppercase">
-                                <i class="fas fa-check-circle mr-1"></i> Paid
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-4 py-3 text-sm text-gray-600">
-                            {{ korisnik.registrovan|date:"d.m.Y" }}
-                        </td>
-                        <td class="px-4 py-3 text-sm">
-                            {% if korisnik.vrsta_pretplate == "TRIAL" %}
-                            <span class="text-orange-600 font-medium">
-                                {{ korisnik.trial_istice|date:"d.m.Y" }}
-                                <span class="text-xs text-orange-400">({{ korisnik.preostalo_dana }} d.)</span>
-                            </span>
-                            {% else %}
-                            <span class="text-green-600 font-medium">Aktivna (Plaćeno)</span>
-                            {% endif %}
-                        </td>
+                        <td class="px-4 py-3 text-sm font-mono">{{ korisnik.jib }}</td>
                         <td class="px-4 py-3 text-center">
                             <a href="{% url 'admin_login_as' korisnik.user.id %}"
                                 class="inline-flex items-center px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
@@ -279,7 +494,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
                             <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
                             <p>Nema rezultata za pretragu "{{ search_query }}"</p>
                         </td>
@@ -294,6 +509,34 @@
     {% if active_tab == 'logs' %}
     <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-xl mb-4 font-semibold">System Logs</h2>
+
+        <!-- Pretraga logova -->
+        <div class="mb-6">
+            <form method="get" class="flex gap-4">
+                <input type="hidden" name="tab" value="logs">
+                <div class="flex-1">
+                    <input type="text" name="log_search" value="{{ log_search }}"
+                        placeholder="🔎 Pretraži po emailu, akciji ili IP adresi..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <i class="fas fa-search mr-2"></i>Pretraži
+                </button>
+                {% if log_search %}
+                <a href="?tab=logs" class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
+                    <i class="fas fa-times mr-2"></i>Resetuj
+                </a>
+                {% endif %}
+            </form>
+
+            {% if log_search %}
+            <p class="mt-2 text-sm text-gray-600">
+                <i class="fas fa-info-circle mr-1"></i>
+                Pronađeno <strong>{{ logs.count }}</strong> rezultata za "<strong>{{ log_search }}</strong>"
+            </p>
+            {% endif %}
+        </div>
+
         <div class="space-y-2">
             {% for log in logs %}
             <div
@@ -302,9 +545,19 @@
                     <div>
                         <span class="text-sm text-gray-500">{{ log.timestamp|date:"d.m.Y H:i" }}</span>
                         <span class="mx-2">•</span>
-                        <span class="font-medium">{{ log.user.email }}</span>
+                        <span class="font-medium">
+                            {% if log.user %}
+                            {{ log.user.email }}
+                            {% else %}
+                            <span class="text-gray-400">System</span>
+                            {% endif %}
+                        </span>
                         <span class="mx-2">•</span>
                         <span class="text-sm">{{ log.action }}</span>
+                        {% if log.ip_address %}
+                        <span class="mx-2">•</span>
+                        <span class="text-xs text-gray-400 font-mono">{{ log.ip_address }}</span>
+                        {% endif %}
                     </div>
                     <span
                         class="px-2 py-1 {% if log.status == 'success' %}bg-green-100 text-green-700{% else %}bg-red-100 text-red-700{% endif %} rounded text-xs font-semibold">
@@ -314,6 +567,11 @@
                 {% if log.details %}
                 <p class="text-xs text-gray-600 mt-1">{{ log.details }}</p>
                 {% endif %}
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-gray-500">
+                <i class="fas fa-search text-4xl mb-2 opacity-30"></i>
+                <p>Nema rezultata{% if log_search %} za "{{ log_search }}"{% endif %}</p>
             </div>
             {% endfor %}
         </div>
@@ -376,6 +634,74 @@
         if ((await response.json()).success) {
             alert('✅ Preskočen');
             window.location.reload();
+        }
+    }
+
+    function openAddBankaModal() {
+        document.getElementById('modalTitle').textContent = 'Dodaj Novu Banku';
+        document.getElementById('banka_id').value = '';
+        document.getElementById('bankaForm').reset();
+        // Postavi default vrijednosti
+        document.getElementById('primalac_doprinosi').value = 'PORESKA UPRAVA REPUBLIKE SRPSKE';
+        document.getElementById('primalac_porez').value = 'PORESKA UPRAVA REPUBLIKE SRPSKE';
+        document.getElementById('svrha_doprinosi_template').value = 'Lični doprinosi za {mjesec}/{godina}';
+        document.getElementById('svrha_porez_template').value = 'Porez na prihod za {godina}';
+        document.getElementById('bankaModal').classList.remove('hidden');
+    }
+
+    function closeBankaModal() {
+        document.getElementById('bankaModal').classList.add('hidden');
+    }
+
+    function editBanka(id) {
+        fetch(`/admin/banka/${id}/`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('modalTitle').textContent = 'Izmijeni Banku';
+                document.getElementById('banka_id').value = data.id;
+                document.getElementById('naziv').value = data.naziv;
+                document.getElementById('skraceni_naziv').value = data.skraceni_naziv;
+                document.getElementById('racun_doprinosi').value = data.racun_doprinosi;
+                document.getElementById('racun_porez').value = data.racun_porez;
+                document.getElementById('primalac_doprinosi').value = data.primalac_doprinosi;
+                document.getElementById('primalac_porez').value = data.primalac_porez;
+                document.getElementById('poziv_doprinosi').value = data.poziv_doprinosi || '';
+                document.getElementById('poziv_porez').value = data.poziv_porez || '';
+                document.getElementById('svrha_doprinosi_template').value = data.svrha_doprinosi_template;
+                document.getElementById('svrha_porez_template').value = data.svrha_porez_template;
+                document.getElementById('aktivna').checked = data.aktivna;
+                document.getElementById('bankaModal').classList.remove('hidden');
+            });
+    }
+
+    function toggleBanka(id) {
+        if (confirm('Promijeniti status banke?')) {
+            fetch(`/admin/banka/${id}/toggle/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    }
+                });
+        }
+    }
+
+    function deleteBanka(id) {
+        if (confirm('Da li ste sigurni da želite obrisati ovu banku?')) {
+            fetch(`/admin/banka/${id}/delete/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Banka obrisana');
+                        location.reload();
+                    }
+                });
         }
     }
 </script>

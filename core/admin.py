@@ -18,6 +18,7 @@ from .models import (
     UploadedDocument,
     CalendarEvent,
     SistemskiParametri,
+    Banka,
 )
 
 
@@ -134,7 +135,14 @@ class FakturaAdmin(admin.ModelAdmin):
         ),
         (
             "Primalac",
-            {"fields": ("primalac_naziv", "primalac_adresa", "primalac_mjesto", "primalac_jib")},
+            {
+                "fields": (
+                    "primalac_naziv",
+                    "primalac_adresa",
+                    "primalac_mjesto",
+                    "primalac_jib",
+                )
+            },
         ),
         (
             "Finansije",
@@ -171,6 +179,56 @@ class StavkaFaktureAdmin(admin.ModelAdmin):
     ]
     list_filter = ["faktura__datum_izdavanja", "jedinica_mjere"]
     search_fields = ["opis", "faktura__broj_fakture"]
+
+
+@admin.register(Banka)
+class BankaAdmin(admin.ModelAdmin):
+    list_display = [
+        "naziv",
+        "skraceni_naziv",
+        "racun_doprinosi",
+        "racun_porez",
+        "aktivna",
+        "zadnje_azurirano",
+    ]
+    list_filter = ["aktivna"]
+    search_fields = ["naziv", "skraceni_naziv", "racun_doprinosi", "racun_porez"]
+    readonly_fields = ["datum_kreiranja", "zadnje_azurirano"]
+
+    fieldsets = (
+        ("Osnovno", {"fields": ("naziv", "skraceni_naziv", "aktivna")}),
+        (
+            "Račun za Doprinose",
+            {
+                "fields": (
+                    "primalac_doprinosi",
+                    "racun_doprinosi",
+                    "model_doprinosi",
+                    "svrha_doprinosi_template",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Račun za Porez",
+            {
+                "fields": (
+                    "primalac_porez",
+                    "racun_porez",
+                    "model_porez",
+                    "svrha_porez_template",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("datum_kreiranja", "zadnje_azurirano"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
 
 
 # ============================================
