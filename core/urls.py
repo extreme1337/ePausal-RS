@@ -112,4 +112,5 @@ urlpatterns = [
         views.admin_extend_trial,
         name="admin_extend_trial",
     ),
+    path("payment/process/", views.process_payment, name="process_payment"),
 ]

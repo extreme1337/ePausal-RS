@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="sr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ePauša RS{% endblock %}</title>
+    <title>{% block title %}ePaušal RS{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {% block extra_css %}{% endblock %}
 </head>
+
 <body class="bg-gray-50">
-    {% if user.is_authenticated and not request.path == '/login/' %}
+    {% if user.is_authenticated and request.path != '/login/' %}
     <!-- Navigation -->
     <nav class="bg-white shadow-md">
         <div class="max-w-7xl mx-auto px-6 py-4">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-8">
-                    <h1 class="text-2xl font-bold text-blue-600">ePauša RS</h1>
+                    <h1 class="text-2xl font-bold text-blue-600">ePaušal RS</h1>
                     {% if not user.is_staff %}
                     <div class="flex gap-4">
                         <a href="{% url 'dashboard' %}" class="{% if request.path == '/dashboard/' %}text-blue-600 font-bold border-b-2 border-blue-600{% else %}text-gray-700{% endif %} hover:text-blue-600 transition pb-1">
@@ -29,12 +31,9 @@
                             <i class="fas fa-envelope mr-1"></i>Inbox
                         </a>
                         {% endif %}
-                        
-                        <!-- NOVO: Izvodi -->
                         <a href="{% url 'izvodi_pregled' %}" class="{% if '/izvodi/' in request.path %}text-blue-600 font-bold border-b-2 border-blue-600{% else %}text-gray-700{% endif %} hover:text-blue-600 transition pb-1">
                             <i class="fas fa-file-invoice-dollar mr-1"></i>Izvodi
                         </a>
-                        
                         <a href="{% url 'fakture' %}" class="{% if '/fakture/' in request.path %}text-blue-600 font-bold border-b-2 border-blue-600{% else %}text-gray-700{% endif %} hover:text-blue-600 transition pb-1">
                             <i class="fas fa-file-invoice mr-1"></i>Fakture
                         </a>
@@ -65,10 +64,12 @@
         </div>
     </nav>
     {% endif %}
+
     <!-- Main Content -->
     <main>
         {% block content %}{% endblock %}
     </main>
+
     <!-- Messages -->
     {% if messages %}
     <div class="fixed bottom-4 right-4 z-50">
@@ -79,6 +80,439 @@
         {% endfor %}
     </div>
     {% endif %}
+
+    <!-- SUBSCRIPTION EXPIRED OVERLAY -->
+    {% if request.subscription_expired %}
+    <div id="subscriptionExpiredOverlay" class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative animate-fade-in">
+            {% if user.is_staff %}
+            <button onclick="document.getElementById('subscriptionExpiredOverlay').style.display='none'" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            {% endif %}
+            
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-red-100 rounded-full mb-4">
+                    <i class="fas fa-exclamation-triangle text-4xl text-red-600"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Pretplata je istekla</h2>
+                <p class="text-gray-600">
+                    Vaša pretplata je istekla <strong class="text-red-600">{{ request.expired_date|date:"d.m.Y" }}</strong>
+                    {% if request.days_expired == 1 %}
+                    (prije 1 dan)
+                    {% else %}
+                    (prije {{ request.days_expired }} dana)
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                    <i class="fas fa-crown text-yellow-500 mr-2"></i>
+                    Nastavi da koristiš ePaušal-RS
+                </h3>
+                <ul class="space-y-2 text-sm text-gray-700">
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span>Automatsko praćenje prihoda i rashoda</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span>Generisanje faktura i uplatnica</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span>Automatski obračun poreza i doprinosa</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span>Godišnji izvještaji za PURS</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-blue-700 font-medium">Vaš trenutni plan:</p>
+                        <p class="text-xl font-bold text-blue-900">{{ request.user.korisnik.plan }}</p>
+                    </div>
+                    <div class="text-right">
+                        {% if request.user.korisnik.plan == 'Starter' %}
+                        <p class="text-2xl font-bold text-blue-900">15 KM</p>
+                        {% elif request.user.korisnik.plan == 'Professional' %}
+                        <p class="text-2xl font-bold text-blue-900">29 KM</p>
+                        {% elif request.user.korisnik.plan == 'Business' %}
+                        <p class="text-2xl font-bold text-blue-900">49 KM</p>
+                        {% elif request.user.korisnik.plan == 'Enterprise' %}
+                        <p class="text-2xl font-bold text-blue-900">99 KM</p>
+                        {% endif %}
+                        <p class="text-xs text-blue-600">po mjesecu</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="openPaymentModal()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-lg transition-all transform hover:scale-105 shadow-lg">
+                    <i class="fas fa-credit-card mr-2"></i>
+                    Obnovi pretplatu - 
+                    {% if request.user.korisnik.plan == 'Starter' %}15 KM
+                    {% elif request.user.korisnik.plan == 'Professional' %}29 KM
+                    {% elif request.user.korisnik.plan == 'Business' %}49 KM
+                    {% elif request.user.korisnik.plan == 'Enterprise' %}99 KM
+                    {% endif %}
+                </button>
+
+                <button onclick="openChangePlanModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-all text-center">
+                    <i class="fas fa-exchange-alt mr-2"></i>
+                    Promijeni plan
+                </button>
+
+                <div class="text-center pt-2">
+                    <a href="mailto:support@epausal-rs.com" class="text-sm text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-envelope mr-1"></i>
+                        Kontaktiraj podršku
+                    </a>
+                </div>
+            </div>
+
+            <div class="mt-6 text-center text-xs text-gray-500">
+                <i class="fas fa-info-circle mr-1"></i>
+                Svi vaši podaci su sačuvani i biće dostupni nakon obnove pretplate
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">
+                    <i class="fas fa-credit-card text-blue-600 mr-2"></i>
+                    Plaćanje
+                </h3>
+                <button onclick="closePaymentModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-gray-700">Plan:</span>
+                    <span class="font-bold text-gray-900" id="payment-plan-name">{{ request.user.korisnik.plan }}</span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-blue-200">
+                    <span class="font-semibold text-gray-800">Ukupno:</span>
+                    <span class="text-2xl font-bold text-blue-600" id="payment-plan-price">
+                        {% if request.user.korisnik.plan == 'Starter' %}15 KM
+                        {% elif request.user.korisnik.plan == 'Professional' %}29 KM
+                        {% elif request.user.korisnik.plan == 'Business' %}49 KM
+                        {% elif request.user.korisnik.plan == 'Enterprise' %}99 KM
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <form id="paymentForm" method="POST" action="{% url 'process_payment' %}">
+                {% csrf_token %}
+                <input type="hidden" id="selected_plan" name="selected_plan" value="{{ request.user.korisnik.plan }}">
+                <input type="hidden" id="selected_price" name="selected_price" value="{% if request.user.korisnik.plan == 'Starter' %}15{% elif request.user.korisnik.plan == 'Professional' %}29{% elif request.user.korisnik.plan == 'Business' %}49{% elif request.user.korisnik.plan == 'Enterprise' %}99{% endif %}">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Broj kartice</label>
+                    <input type="text" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Datum isteka</label>
+                        <input type="text" name="expiry" placeholder="MM/YY" maxlength="5" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">CVV</label>
+                        <input type="text" name="cvv" placeholder="123" maxlength="3" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <button type="submit" id="payment-submit-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all">
+                    <i class="fas fa-lock mr-2"></i>
+                    Plati sigurno
+                </button>
+            </form>
+
+            <p class="text-xs text-center text-gray-500 mt-4">
+                <i class="fas fa-shield-alt mr-1"></i>
+                Svi podaci su šifrovani i sigurni
+            </p>
+        </div>
+    </div>
+
+    <!-- Change Plan Modal -->
+    <div id="changePlanModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-[70] flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">
+                    <i class="fas fa-exchange-alt text-blue-600 mr-2"></i>
+                    Promijeni Plan
+                </h3>
+                <button onclick="closeChangePlanModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <p class="text-sm text-blue-700">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Trenutni plan: <strong>{{ request.user.korisnik.plan }}</strong>
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Starter -->
+                <div class="border-2 {% if request.user.korisnik.plan == 'Starter' %}border-blue-500 bg-blue-50{% else %}border-gray-200{% endif %} rounded-lg p-6 hover:shadow-lg transition-all">
+                    <div class="text-center mb-4">
+                        <h4 class="text-xl font-bold text-gray-900">Starter</h4>
+                        <div class="mt-2">
+                            <span class="text-3xl font-bold text-blue-600">15 KM</span>
+                            <span class="text-gray-500 text-sm">/mjesec</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 mb-6">
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Osnovna evidencija</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Do 50 prihoda/mj</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Fakture</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Email podrška</span>
+                        </li>
+                    </ul>
+                    {% if request.user.korisnik.plan == 'Starter' %}
+                    <button disabled class="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg cursor-not-allowed">
+                        <i class="fas fa-check mr-2"></i>Trenutni Plan
+                    </button>
+                    {% else %}
+                    <button onclick="selectPlan('Starter', 15)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all">
+                        Odaberi
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Professional -->
+                <div class="border-2 {% if request.user.korisnik.plan == 'Professional' %}border-blue-500 bg-blue-50{% else %}border-gray-200{% endif %} rounded-lg p-6 hover:shadow-lg transition-all relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                        <span class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold">POPULARNO</span>
+                    </div>
+                    <div class="text-center mb-4 mt-2">
+                        <h4 class="text-xl font-bold text-gray-900">Professional</h4>
+                        <div class="mt-2">
+                            <span class="text-3xl font-bold text-blue-600">29 KM</span>
+                            <span class="text-gray-500 text-sm">/mjesec</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 mb-6">
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Email inbox AI</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Neograničeno</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Uplatnice</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Prioritet</span>
+                        </li>
+                    </ul>
+                    {% if request.user.korisnik.plan == 'Professional' %}
+                    <button disabled class="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg cursor-not-allowed">
+                        <i class="fas fa-check mr-2"></i>Trenutni Plan
+                    </button>
+                    {% else %}
+                    <button onclick="selectPlan('Professional', 29)" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-2 px-4 rounded-lg transition-all">
+                        Odaberi
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Business -->
+                <div class="border-2 {% if request.user.korisnik.plan == 'Business' %}border-blue-500 bg-blue-50{% else %}border-gray-200{% endif %} rounded-lg p-6 hover:shadow-lg transition-all">
+                    <div class="text-center mb-4">
+                        <h4 class="text-xl font-bold text-gray-900">Business</h4>
+                        <div class="mt-2">
+                            <span class="text-3xl font-bold text-blue-600">49 KM</span>
+                            <span class="text-gray-500 text-sm">/mjesec</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 mb-6">
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>API pristup</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Bilans</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Custom izvještaji</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Multi korisnici</span>
+                        </li>
+                    </ul>
+                    {% if request.user.korisnik.plan == 'Business' %}
+                    <button disabled class="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg cursor-not-allowed">
+                        <i class="fas fa-check mr-2"></i>Trenutni Plan
+                    </button>
+                    {% else %}
+                    <button onclick="selectPlan('Business', 49)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all">
+                        Odaberi
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Enterprise -->
+                <div class="border-2 {% if request.user.korisnik.plan == 'Enterprise' %}border-blue-500 bg-blue-50{% else %}border-gray-200{% endif %} rounded-lg p-6 hover:shadow-lg transition-all">
+                    <div class="text-center mb-4">
+                        <h4 class="text-xl font-bold text-gray-900">Enterprise</h4>
+                        <div class="mt-2">
+                            <span class="text-3xl font-bold text-blue-600">99 KM</span>
+                            <span class="text-gray-500 text-sm">/mjesec</span>
+                        </div>
+                    </div>
+                    <ul class="space-y-2 mb-6">
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Dedicated podrška</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>Integracije</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>SLA</span>
+                        </li>
+                        <li class="flex items-start text-sm">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>White label</span>
+                        </li>
+                    </ul>
+                    {% if request.user.korisnik.plan == 'Enterprise' %}
+                    <button disabled class="w-full bg-gray-300 text-gray-500 py-2 px-4 rounded-lg cursor-not-allowed">
+                        <i class="fas fa-check mr-2"></i>Trenutni Plan
+                    </button>
+                    {% else %}
+                    <button onclick="selectPlan('Enterprise', 99)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-all">
+                        Odaberi
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-6 text-center text-xs text-gray-500">
+                <i class="fas fa-info-circle mr-1"></i>
+                Nakon odabira plana, bićete prebačeni na plaćanje
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+
+    <script>
+        function openPaymentModal() {
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function openChangePlanModal() {
+            document.getElementById('changePlanModal').classList.remove('hidden');
+        }
+
+        function closeChangePlanModal() {
+            document.getElementById('changePlanModal').classList.add('hidden');
+        }
+
+        function selectPlan(planName, price) {
+            closeChangePlanModal();
+            document.getElementById('selected_plan').value = planName;
+            document.getElementById('selected_price').value = price;
+            document.getElementById('payment-plan-name').textContent = planName;
+            document.getElementById('payment-plan-price').textContent = price + ' KM';
+            const submitBtn = document.getElementById('payment-submit-btn');
+            submitBtn.innerHTML = '<i class="fas fa-lock mr-2"></i>Plati ' + price + ' KM sigurno';
+            openPaymentModal();
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closePaymentModal();
+                closeChangePlanModal();
+            }
+        });
+
+        const cardInput = document.querySelector('input[name="card_number"]');
+        if (cardInput) {
+            cardInput.addEventListener('input', function (e) {
+                let value = e.target.value.replace(/\s/g, '');
+                let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+                e.target.value = formattedValue;
+            });
+        }
+
+        const expiryInput = document.querySelector('input[name="expiry"]');
+        if (expiryInput) {
+            expiryInput.addEventListener('input', function (e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    e.target.value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                } else {
+                    e.target.value = value;
+                }
+            });
+        }
+
+        const cvvInput = document.querySelector('input[name="cvv"]');
+        if (cvvInput) {
+            cvvInput.addEventListener('input', function (e) {
+                e.target.value = e.target.value.replace(/\D/g, '');
+            });
+        }
+    </script>
+    {% endif %}
+
     {% block extra_js %}{% endblock %}
 </body>
+
 </html>

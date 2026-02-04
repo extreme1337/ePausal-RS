@@ -865,6 +865,65 @@ def download_payment(request, uplatnica_id):
         return FileResponse(uplatnica.fajl.open("rb"), as_attachment=True)
 
 
+@login_required
+def process_payment(request):
+    """Procesira plaćanje i produžava pretplatu za 30 dana"""
+    if request.method == "POST":
+        try:
+            korisnik = request.user.korisnik
+
+            card_number = request.POST.get("card_number", "").replace(" ", "")
+            expiry = request.POST.get("expiry")
+            cvv = request.POST.get("cvv")
+
+            # Validacija
+            if len(card_number) != 16 or len(cvv) != 3:
+                messages.error(request, "❌ Neispravni podaci kartice")
+                return redirect("dashboard")
+
+            # Izračunaj novi datum isteka
+            if (
+                korisnik.trial_end_date
+                and korisnik.trial_end_date > timezone.now().date()
+            ):
+                new_end_date = korisnik.trial_end_date + timedelta(days=30)
+            else:
+                new_end_date = timezone.now().date() + timedelta(days=30)
+
+            korisnik.trial_end_date = new_end_date
+            korisnik.save()
+
+            # Log
+            SystemLog.objects.create(
+                user=request.user,
+                action="PAYMENT_SUCCESS",
+                status="success",
+                ip_address=get_client_ip(request),
+                details=f"Renewed subscription until {new_end_date}",
+            )
+
+            messages.success(
+                request,
+                f'✅ Plaćanje uspješno! Pretplata aktivna do {new_end_date.strftime("%d.%m.%Y")}',
+            )
+
+            return redirect("dashboard")
+
+        except Exception as e:
+            SystemLog.objects.create(
+                user=request.user,
+                action="PAYMENT_FAILED",
+                status="error",
+                ip_address=get_client_ip(request),
+                details=str(e),
+            )
+
+            messages.error(request, f"❌ Greška pri plaćanju: {str(e)}")
+            return redirect("dashboard")
+
+    return redirect("dashboard")
+
+
 # ============================================
 # BILANS
 # ============================================
@@ -1359,11 +1418,13 @@ def admin_panel(request):
     # --- LOGIKA ZA TRIAL/PAID ---
     today = timezone.now().date()
     for k in korisnici:
-        k.datum_isteka_triala = k.registrovan + timedelta(days=30)
-        if today <= k.datum_isteka_triala:
+        if not k.trial_end_date:
+            k.trial_end_date = k.registrovan + timedelta(days=30)
+            k.save()
+        if today <= k.trial_end_date:
             k.je_trial = True
             k.status_label = "Trial"
-            preostalo = (k.datum_isteka_triala - today).days
+            preostalo = (k.trial_end_date - today).days
             k.dani_info = f"Još {preostalo} dana"
         else:
             k.je_trial = False
@@ -1399,6 +1460,7 @@ def admin_panel(request):
         "log_search": log_search,
         "parametri": parametri,
         "banke": banke,
+        
     }
 
     return render(request, "core/admin_panel.html", context)
