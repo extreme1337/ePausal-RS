@@ -87,7 +87,11 @@ urlpatterns = [
     ),
     # Banke CRUD (samo admin)
     path("admin-panel/banka/save/", views.admin_banka_save, name="admin_banka_save"),
-    path("admin-panel/banka/<int:banka_id>/", views.admin_banka_get, name="admin_banka_get"),
+    path(
+        "admin-panel/banka/<int:banka_id>/",
+        views.admin_banka_get,
+        name="admin_banka_get",
+    ),
     path(
         "admin-panel/banka/<int:banka_id>/toggle/",
         views.admin_banka_toggle,
@@ -102,5 +106,10 @@ urlpatterns = [
         "admin-panel/parametri/update/",
         views.admin_parametri_update,
         name="admin_parametri_update",
+    ),
+    path(
+        "admin-panel/extend-trial/<int:user_id>/",
+        views.admin_extend_trial,
+        name="admin_extend_trial",
     ),
 ]

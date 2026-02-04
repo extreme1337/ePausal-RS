@@ -39,6 +39,18 @@ class Korisnik(models.Model):
         help_text="Odaberite tip preduzetnika za izračunavanje poreza",
     )
 
+    trial_end_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Datum isteka trial perioda",
+        help_text="Automatski se postavlja 30 dana od registracije",
+    )
+    is_trial_extended = models.BooleanField(
+        default=False,
+        verbose_name="Trial produžen",
+        help_text="Da li je admin ručno produžio trial period",
+    )
+
     def __str__(self):
         return f"{self.ime} ({self.plan})"
 

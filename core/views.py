@@ -1589,3 +1589,52 @@ def admin_banka_delete(request, banka_id):
     messages.success(request, f'🗑️ Banka "{naziv}" obrisana!')
 
     return JsonResponse({"success": True})
+
+
+@login_required
+@require_http_methods(["POST"])
+def admin_extend_trial(request, user_id):
+    """Produži trial period za korisnika (samo admin)"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    try:
+        korisnik = get_object_or_404(Korisnik, user__id=user_id)
+        days = int(request.POST.get("days", 30))
+
+        # Izračunaj novi datum
+        if korisnik.trial_end_date and korisnik.trial_end_date > timezone.now().date():
+            # Ako trail još traje, produžavamo od postojećeg datuma
+            new_date = korisnik.trial_end_date + timedelta(days=days)
+        else:
+            # Ako je istekao, počinjemo od danas
+            new_date = timezone.now().date() + timedelta(days=days)
+
+        korisnik.trial_end_date = new_date
+        korisnik.is_trial_extended = True
+        korisnik.save()
+
+        # Logovanje
+        SystemLog.objects.create(
+            user=request.user,
+            action=f"TRIAL_EXTENDED",
+            status="success",
+            ip_address=get_client_ip(request),
+            details=f"Extended trial for {korisnik.ime} by {days} days. New end date: {new_date}",
+        )
+
+        messages.success(
+            request,
+            f'✅ Trial period produžen za {days} dana! Novi datum isteka: {new_date.strftime("%d.%m.%Y")}',
+        )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "new_date": new_date.strftime("%d.%m.%Y"),
+                "days_added": days,
+            }
+        )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
