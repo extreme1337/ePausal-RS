@@ -820,3 +820,127 @@ class Banka(models.Model):
             template = self.svrha_porez_template
 
         return template.format(mjesec=mjesec, godina=godina)
+
+
+class SupportPitanje(models.Model):
+    """Korisnička pitanja i support ticketi"""
+
+    STATUS_CHOICES = [
+        ("novo", "Novo"),
+        ("u_obradi", "U obradi"),
+        ("rijeseno", "Riješeno"),
+        ("zatvoreno", "Zatvoreno"),
+    ]
+
+    PRIORITET_CHOICES = [
+        ("nizak", "Nizak"),
+        ("srednji", "Srednji"),
+        ("visok", "Visok"),
+        ("hitan", "Hitan"),
+    ]
+
+    korisnik = models.ForeignKey(
+        Korisnik,
+        on_delete=models.CASCADE,
+        related_name="support_pitanja",
+        verbose_name="Korisnik",
+    )
+
+    naslov = models.CharField(max_length=200, verbose_name="Naslov")
+    poruka = models.TextField(verbose_name="Poruka")
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="novo", verbose_name="Status"
+    )
+
+    prioritet = models.CharField(
+        max_length=20,
+        choices=PRIORITET_CHOICES,
+        default="srednji",
+        verbose_name="Prioritet",
+    )
+
+    # Timestamps
+    datum_kreiranja = models.DateTimeField(auto_now_add=True, verbose_name="Kreirano")
+    datum_azuriranja = models.DateTimeField(auto_now=True, verbose_name="Ažurirano")
+    datum_zatvaranja = models.DateTimeField(
+        blank=True, null=True, verbose_name="Zatvoreno"
+    )
+
+    # Admin koji rješava
+    obradjuje = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="support_tickets_assigned",
+        verbose_name="Obrađuje admin",
+    )
+
+    class Meta:
+        ordering = ["-datum_kreiranja"]
+        verbose_name = "Support Pitanje"
+        verbose_name_plural = "Support Pitanja"
+
+    def __str__(self):
+        return f"{self.naslov} - {self.korisnik.ime} ({self.status})"
+
+    def get_slike(self):
+        """Vrati sve priložene slike"""
+        return self.slike.all()
+
+
+class SupportSlika(models.Model):
+    """Slike priložene uz support pitanje"""
+
+    pitanje = models.ForeignKey(
+        SupportPitanje,
+        on_delete=models.CASCADE,
+        related_name="slike",
+        verbose_name="Pitanje",
+    )
+
+    slika = models.ImageField(upload_to="support_slike/%Y/%m/", verbose_name="Slika")
+
+    datum_upload = models.DateTimeField(auto_now_add=True, verbose_name="Upload-ovano")
+
+    class Meta:
+        ordering = ["datum_upload"]
+        verbose_name = "Support Slika"
+        verbose_name_plural = "Support Slike"
+
+    def __str__(self):
+        return f"Slika za: {self.pitanje.naslov}"
+
+    def delete(self, *args, **kwargs):
+        """Obriši sliku sa diska pri brisanju"""
+        if self.slika:
+            if os.path.isfile(self.slika.path):
+                os.remove(self.slika.path)
+        super().delete(*args, **kwargs)
+
+
+class SupportOdgovor(models.Model):
+    """Admin odgovori na support pitanja"""
+
+    pitanje = models.ForeignKey(
+        SupportPitanje,
+        on_delete=models.CASCADE,
+        related_name="odgovori",
+        verbose_name="Pitanje",
+    )
+
+    admin = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="Admin"
+    )
+
+    odgovor = models.TextField(verbose_name="Odgovor")
+    datum_odgovora = models.DateTimeField(auto_now_add=True, verbose_name="Datum")
+
+    class Meta:
+        ordering = ["datum_odgovora"]
+        verbose_name = "Support Odgovor"
+        verbose_name_plural = "Support Odgovori"
+
+    def __str__(self):
+        return f"Odgovor od {self.admin} na {self.pitanje.naslov}"

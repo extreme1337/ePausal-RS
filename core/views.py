@@ -2063,7 +2063,7 @@ def export_all_data(request):
 
 @login_required
 def admin_panel(request):
-    """Admin panel sa pretragom i logikom za trial/paid"""
+    """Admin panel sa support ticketima"""
     if not request.user.is_staff:
         return redirect("dashboard")
 
@@ -2071,7 +2071,11 @@ def admin_panel(request):
     search_query = request.GET.get("search", "").strip()
     log_search = request.GET.get("log_search", "").strip()
 
-    # Dohvatanje korisnika
+    # Support filters
+    support_status = request.GET.get("support_status", "")
+    support_prioritet = request.GET.get("support_prioritet", "")
+
+    # Korisnici
     korisnici = Korisnik.objects.all().select_related("user")
 
     if search_query:
@@ -2085,7 +2089,7 @@ def admin_panel(request):
             | Q(jib__icontains=search_query)
         )
 
-    # --- LOGIKA ZA TRIAL/PAID ---
+    # Trial/Paid logika
     today = timezone.now().date()
     for k in korisnici:
         if not k.trial_end_date:
@@ -2101,8 +2105,8 @@ def admin_panel(request):
             k.status_label = "Paid"
             k.dani_info = "Aktivna licenca"
 
+    # Logs
     logs = SystemLog.objects.all()
-
     if log_search:
         from django.db.models import Q
 
@@ -2113,13 +2117,37 @@ def admin_panel(request):
             | Q(ip_address__icontains=log_search)
             | Q(details__icontains=log_search)
         )
+    logs = logs[:100]
 
-    logs = logs[:100]  # Limit
-
+    # Failed requests
     failed = FailedRequest.objects.all()
+
+    # Parametri
     parametri = SistemskiParametri.get_parametri()
 
+    # Banke
     banke = Banka.objects.all().order_by("-aktivna", "naziv")
+
+    # SUPPORT PITANJA
+    support_pitanja = (
+        SupportPitanje.objects.all()
+        .select_related("korisnik", "obradjuje")
+        .prefetch_related("slike", "odgovori")
+    )
+
+    if support_status:
+        support_pitanja = support_pitanja.filter(status=support_status)
+
+    if support_prioritet:
+        support_pitanja = support_pitanja.filter(prioritet=support_prioritet)
+
+    # Statistika support
+    support_stats = {
+        "novo": SupportPitanje.objects.filter(status="novo").count(),
+        "u_obradi": SupportPitanje.objects.filter(status="u_obradi").count(),
+        "rijeseno": SupportPitanje.objects.filter(status="rijeseno").count(),
+        "hitan": SupportPitanje.objects.filter(prioritet="hitan").count(),
+    }
 
     context = {
         "korisnici": korisnici,
@@ -2130,9 +2158,111 @@ def admin_panel(request):
         "log_search": log_search,
         "parametri": parametri,
         "banke": banke,
+        "support_pitanja": support_pitanja,
+        "support_stats": support_stats,
+        "support_status": support_status,
+        "support_prioritet": support_prioritet,
+        "status_choices": SupportPitanje.STATUS_CHOICES,
+        "prioritet_choices": SupportPitanje.PRIORITET_CHOICES,
     }
 
     return render(request, "core/admin_panel.html", context)
+
+
+@login_required
+def admin_support_update(request, pitanje_id):
+    """Admin ažurira support pitanje (status, prioritet, assignee)"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    if request.method == "POST":
+        pitanje = get_object_or_404(SupportPitanje, id=pitanje_id)
+
+        # Ažuriraj polja
+        novi_status = request.POST.get("status")
+        novi_prioritet = request.POST.get("prioritet")
+
+        if novi_status:
+            pitanje.status = novi_status
+
+            # Ako je zatvoreno, postavi datum
+            if novi_status == "zatvoreno":
+                pitanje.datum_zatvaranja = timezone.now()
+
+        if novi_prioritet:
+            pitanje.prioritet = novi_prioritet
+
+        # Assign to admin
+        assign_to_me = request.POST.get("assign_to_me")
+        if assign_to_me:
+            pitanje.obradjuje = request.user
+
+        pitanje.save()
+
+        messages.success(request, f"✅ Ticket #{pitanje.id} ažuriran!")
+        return redirect(f"/admin-panel/?tab=support")
+
+    return redirect("/admin-panel/?tab=support")
+
+
+@login_required
+def admin_support_reply(request, pitanje_id):
+    """Admin odgovara na support pitanje"""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    if request.method == "POST":
+        pitanje = get_object_or_404(SupportPitanje, id=pitanje_id)
+        odgovor_text = request.POST.get("odgovor")
+
+        if not odgovor_text:
+            messages.error(request, "❌ Odgovor ne može biti prazan")
+            return redirect(f"/admin-panel/?tab=support")
+
+        # Kreiraj odgovor
+        SupportOdgovor.objects.create(
+            pitanje=pitanje, admin=request.user, odgovor=odgovor_text
+        )
+
+        # Automatski promijeni status u "u_obradi" ako je bio "novo"
+        if pitanje.status == "novo":
+            pitanje.status = "u_obradi"
+
+        # Assign to admin ako nije
+        if not pitanje.obradjuje:
+            pitanje.obradjuje = request.user
+
+        pitanje.save()
+
+        # Log
+        SystemLog.objects.create(
+            user=request.user,
+            action="SUPPORT_REPLY",
+            status="success",
+            ip_address=get_client_ip(request),
+            details=f"Reply to ticket #{pitanje.id}",
+        )
+
+        messages.success(request, f"✅ Odgovor poslat za Ticket #{pitanje.id}")
+        return redirect(f"/admin-panel/?tab=support")
+
+    return redirect("/admin-panel/?tab=support")
+
+
+@login_required
+def admin_support_detail(request, pitanje_id):
+    """Detaljan pregled support ticketa u admin panelu"""
+    if not request.user.is_staff:
+        return redirect("dashboard")
+
+    pitanje = get_object_or_404(SupportPitanje, id=pitanje_id)
+
+    context = {
+        "pitanje": pitanje,
+        "all_admins": User.objects.filter(is_staff=True),
+    }
+
+    return render(request, "core/admin_support_detail.html", context)
 
 
 @login_required
@@ -2369,3 +2499,92 @@ def admin_extend_trial(request, user_id):
 
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+#####################################################
+########### SUPPORT ##################################
+#######################################################
+@login_required
+def support_view(request):
+    """Support pitanja - lista i kreiranje"""
+    korisnik = request.user.korisnik
+
+    if request.method == "POST":
+        naslov = request.POST.get("naslov")
+        poruka = request.POST.get("poruka")
+
+        if not naslov or not poruka:
+            messages.error(request, "❌ Naslov i poruka su obavezni")
+            return redirect("support")
+
+        # Kreiraj pitanje
+        pitanje = SupportPitanje.objects.create(
+            korisnik=korisnik, naslov=naslov, poruka=poruka, status="novo"
+        )
+
+        # Obradi slike (maksimalno 5)
+        slike = request.FILES.getlist("slike")
+
+        if len(slike) > 5:
+            messages.warning(request, "⚠️ Maksimalno 5 slika. Samo prvih 5 je sačuvano.")
+            slike = slike[:5]
+
+        for slika in slike:
+            # Validacija tipa fajla
+            if not slika.content_type.startswith("image/"):
+                messages.warning(request, f"⚠️ {slika.name} nije slika. Preskočeno.")
+                continue
+
+            # Validacija veličine (max 5MB)
+            if slika.size > 5 * 1024 * 1024:
+                messages.warning(
+                    request, f"⚠️ {slika.name} je prevelika (max 5MB). Preskočeno."
+                )
+                continue
+
+            SupportSlika.objects.create(pitanje=pitanje, slika=slika)
+
+        # Log
+        SystemLog.objects.create(
+            user=request.user,
+            action="SUPPORT_TICKET_CREATED",
+            status="success",
+            ip_address=get_client_ip(request),
+            details=f"Ticket #{pitanje.id}: {naslov}",
+        )
+
+        messages.success(request, f"✅ Pitanje poslato! Ticket #{pitanje.id}")
+        return redirect("support")
+
+    # GET - prikaz liste
+    pitanja = korisnik.support_pitanja.all()
+
+    context = {"pitanja": pitanja}
+
+    return render(request, "core/support.html", context)
+
+
+@login_required
+def support_detail(request, pitanje_id):
+    """Detalji support pitanja sa odgovorima"""
+    pitanje = get_object_or_404(
+        SupportPitanje, id=pitanje_id, korisnik=request.user.korisnik
+    )
+
+    context = {"pitanje": pitanje}
+
+    return render(request, "core/support_detail.html", context)
+
+
+@login_required
+def support_delete(request, pitanje_id):
+    """Obriši support pitanje"""
+    if request.method == "POST":
+        pitanje = get_object_or_404(
+            SupportPitanje, id=pitanje_id, korisnik=request.user.korisnik
+        )
+
+        pitanje.delete()
+        messages.success(request, "🗑️ Pitanje obrisano")
+
+    return redirect("support")

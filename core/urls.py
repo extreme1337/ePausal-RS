@@ -120,4 +120,26 @@ urlpatterns = [
         views.admin_extend_trial,
         name="admin_extend_trial",
     ),
+    # SUPPORT
+    path("support/", views.support_view, name="support"),
+    path("support/<int:pitanje_id>/", views.support_detail, name="support_detail"),
+    path(
+        "support/<int:pitanje_id>/delete/", views.support_delete, name="support_delete"
+    ),
+    # SUPPORT - Admin
+    path(
+        "admin-panel/support/<int:pitanje_id>/",
+        views.admin_support_detail,
+        name="admin_support_detail",
+    ),
+    path(
+        "admin-panel/support/<int:pitanje_id>/update/",
+        views.admin_support_update,
+        name="admin_support_update",
+    ),
+    path(
+        "admin-panel/support/<int:pitanje_id>/reply/",
+        views.admin_support_reply,
+        name="admin_support_reply",
+    ),
 ]

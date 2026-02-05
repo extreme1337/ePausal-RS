@@ -4,6 +4,9 @@ from .models import (
     Prihod,
     Faktura,
     StavkaFakture,
+    SupportOdgovor,
+    SupportPitanje,
+    SupportSlika,
     Uplatnica,
     Bilans,
     EmailInbox,
@@ -17,7 +20,7 @@ from .models import (
     SistemskiParametri,
     Banka,
 )
-
+from django.utils.html import format_html
 
 # ============================================
 # OSNOVNI MODELI
@@ -374,8 +377,6 @@ class FailedRequestAdmin(admin.ModelAdmin):
 # ============================================
 
 
-
-
 @admin.register(UserPreferences)
 class UserPreferencesAdmin(admin.ModelAdmin):
     list_display = [
@@ -449,11 +450,8 @@ class EmailNotificationAdmin(admin.ModelAdmin):
     date_hierarchy = "scheduled_date"
 
 
-
-
-
 # ============================================
-# SISTEMSKI PARAMETRI - DODAJ OVO NA KRAJ admin.py
+# SISTEMSKI PARAMETRI
 # ============================================
 
 
@@ -517,3 +515,121 @@ class SistemskiParametriAdmin(admin.ModelAdmin):
         if SistemskiParametri.objects.count() == 0:
             SistemskiParametri.objects.create()
         return super().changelist_view(request, extra_context)
+
+
+# ============================================
+# SUPPORT
+# ============================================
+
+
+@admin.register(SupportPitanje)
+class SupportPitanjeAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "korisnik",
+        "naslov",
+        "status_badge",
+        "prioritet_badge",
+        "broj_slika",
+        "broj_odgovora",
+        "datum_kreiranja",
+    ]
+    list_filter = ["status", "prioritet", "datum_kreiranja"]
+    search_fields = ["naslov", "poruka", "korisnik__ime", "korisnik__user__email"]
+    readonly_fields = ["datum_kreiranja", "datum_azuriranja", "prikaz_slika"]
+
+    fieldsets = (
+        ("Ticket Info", {"fields": ("korisnik", "naslov", "poruka")}),
+        ("Status", {"fields": ("status", "prioritet", "obradjuje")}),
+        ("Slike", {"fields": ("prikaz_slika",), "classes": ("collapse",)}),
+        (
+            "Datumi",
+            {
+                "fields": ("datum_kreiranja", "datum_azuriranja", "datum_zatvaranja"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def status_badge(self, obj):
+        colors = {
+            "novo": "blue",
+            "u_obradi": "yellow",
+            "rijeseno": "green",
+            "zatvoreno": "gray",
+        }
+        color = colors.get(obj.status, "gray")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 10px; border-radius: 10px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = "Status"
+
+    def prioritet_badge(self, obj):
+        colors = {
+            "nizak": "#9CA3AF",
+            "srednji": "#3B82F6",
+            "visok": "#F59E0B",
+            "hitan": "#EF4444",
+        }
+        color = colors.get(obj.prioritet, "#9CA3AF")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 10px; border-radius: 10px; font-weight: bold;">{}</span>',
+            color,
+            obj.get_prioritet_display(),
+        )
+
+    prioritet_badge.short_description = "Prioritet"
+
+    def broj_slika(self, obj):
+        return obj.slike.count()
+
+    broj_slika.short_description = "Slike"
+
+    def broj_odgovora(self, obj):
+        count = obj.odgovori.count()
+        if count > 0:
+            return format_html(
+                '<span style="color: green; font-weight: bold;">{}</span>', count
+            )
+        return "0"
+
+    broj_odgovora.short_description = "Odgovori"
+
+    def prikaz_slika(self, obj):
+        """Prikaži sve slike"""
+        if not obj.slike.exists():
+            return "Nema slika"
+
+        html = '<div style="display: flex; gap: 10px; flex-wrap: wrap;">'
+        for slika in obj.slike.all():
+            html += f'<a href="{slika.slika.url}" target="_blank"><img src="{slika.slika.url}" style="max-width: 150px; max-height: 150px; border-radius: 5px; border: 2px solid #ddd;"></a>'
+        html += "</div>"
+        return format_html(html)
+
+    prikaz_slika.short_description = "Priložene slike"
+
+
+@admin.register(SupportOdgovor)
+class SupportOdgovorAdmin(admin.ModelAdmin):
+    list_display = ["pitanje", "admin", "datum_odgovora"]
+    list_filter = ["datum_odgovora"]
+    readonly_fields = ["datum_odgovora"]
+
+
+@admin.register(SupportSlika)
+class SupportSlikaAdmin(admin.ModelAdmin):
+    list_display = ["pitanje", "slika_preview", "datum_upload"]
+    readonly_fields = ["datum_upload", "slika_preview"]
+
+    def slika_preview(self, obj):
+        if obj.slika:
+            return format_html(
+                '<img src="{}" style="max-width: 200px; max-height: 200px;">',
+                obj.slika.url,
+            )
+        return "Nema slike"
+
+    slika_preview.short_description = "Preview"
