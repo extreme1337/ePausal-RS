@@ -7,7 +7,7 @@ urlpatterns = [
     path("features/", views.features_page, name="features"),
     path("login/", views.user_login, name="login"),
     path("logout/", views.user_logout, name="logout"),
-    # Registration Flow (3 steps)
+    # Registration Flow
     path(
         "register/choose-plan/", views.register_choose_plan, name="register_choose_plan"
     ),
@@ -21,15 +21,30 @@ urlpatterns = [
         views.change_language,
         name="change_language",
     ),
-    # User Dashboard & Core Features
+    # Dashboard
     path("dashboard/", views.dashboard, name="dashboard"),
+    path("change-plan/", views.change_plan, name="change_plan"),
+    path("payment/process/", views.process_payment, name="process_payment"),
+    path(
+        "payment/upgrade/",
+        views.process_upgrade_payment,
+        name="process_upgrade_payment",
+    ),
+    # Prihodi
     path("prihodi/", views.prihodi_view, name="prihodi"),
+    # Email Inbox
     path("inbox/", views.inbox_view, name="inbox"),
+    path("inbox/webhook/", views.email_webhook, name="email_webhook"),
+    path("inbox/confirm/", views.inbox_confirm, name="inbox_confirm"),
+    path("inbox/confirm-all/", views.inbox_confirm_all, name="inbox_confirm_all"),
+    path("inbox/<int:inbox_id>/delete/", views.inbox_delete, name="inbox_delete"),
+    # Izvodi
     path("izvodi/upload/", views.izvodi_upload, name="izvodi_upload"),
     path("izvodi/", views.izvodi_pregled, name="izvodi_pregled"),
     path("izvodi/<int:izvod_id>/delete/", views.izvod_delete, name="izvod_delete"),
     # Fakture
     path("fakture/", views.fakture_view, name="fakture"),
+    path("fakture/dodaj/", views.faktura_dodaj, name="faktura_dodaj"),
     path(
         "fakture/download/<int:faktura_id>/",
         views.download_invoice,
@@ -59,16 +74,10 @@ urlpatterns = [
         views.godisnji_izvjestaj_view,
         name="godisnji_izvjestaj",
     ),
-    # Advanced Features
-    path("bulk-upload/", views.bulk_upload_documents, name="bulk_upload"),
-    path("calendar/", views.calendar_view, name="calendar"),
-    path("analytics/", views.analytics_view, name="analytics"),
-    path(
-        "currency-converter/", views.currency_converter_view, name="currency_converter"
-    ),
+    # User Preferences
     path("preferences/", views.preferences_view, name="preferences"),
     path("export-data/", views.export_all_data, name="export_data"),
-    # Admin Panel (bez konflikta sa Django admin)
+    # Admin Panel
     path("admin-panel/", views.admin_panel, name="admin_panel"),
     path(
         "admin-panel/login-as/<int:user_id>/",
@@ -85,7 +94,6 @@ urlpatterns = [
         views.skip_failed_request,
         name="skip_request",
     ),
-    # Banke CRUD (samo admin)
     path("admin-panel/banka/save/", views.admin_banka_save, name="admin_banka_save"),
     path(
         "admin-panel/banka/<int:banka_id>/",
@@ -112,5 +120,4 @@ urlpatterns = [
         views.admin_extend_trial,
         name="admin_extend_trial",
     ),
-    path("payment/process/", views.process_payment, name="process_payment"),
 ]

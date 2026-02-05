@@ -5,61 +5,190 @@
 {% block content %}
 <div class="max-w-7xl mx-auto p-6">
     <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">
-                <i class="fas fa-envelope-open-text mr-2 text-blue-600"></i>
-                Email Inbox - AI Parsing bankovnih izvoda
-            </h2>
-            {% if inbox.count > 0 %}
-            <button onclick="confirmAll()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                <i class="fas fa-check-circle mr-2"></i>
-                Potvrdi sve ({{ inbox.count }})
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-envelope-open-text text-blue-600"></i>
+                    Email Inbox
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    AI automatski parsira bankovne izvode iz emaila
+                </p>
+            </div>
+
+            {% if inbox_poruke.count > 0 %}
+            <button onclick="confirmAll()"
+                class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                <i class="fas fa-check-circle"></i>
+                <span>Potvrdi sve ({{ inbox_poruke.count }})</span>
             </button>
             {% endif %}
         </div>
-        
-        <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-            <i class="fas fa-info-circle mr-2 text-blue-600"></i>
-            <strong>Kako radi:</strong> Sistem automatski prepoznaje email izvode iz NLB Banke i parsira transakcije.
+
+        <!-- Info Box -->
+        <div class="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-blue-600 text-xl mt-0.5"></i>
+                <div>
+                    <p class="font-semibold text-blue-900">Kako radi:</p>
+                    <ul class="text-sm text-blue-800 mt-1 space-y-1">
+                        <li>• Pošalji bankovni izvod (PDF) na: <strong>54223ab7518b75af4c91+{{ request.user.korisnik.jib }}@cloudmailin.net</strong></li>
+                        <li>• AI automatski parsira prihode i rashode</li>
+                        <li>• Provjeri i odobri transakcije jednim klikom</li>
+                    </ul>
+                </div>
+            </div>
         </div>
-        
-        {% if inbox.count == 0 %}
-        <div class="text-center py-12 text-gray-500">
-            <i class="fas fa-inbox text-6xl mb-4 opacity-30"></i>
-            <p class="text-lg">Nema novih transakcija u inboxu</p>
-            <p class="text-sm mt-2">Email izvodi banke se automatski analiziraju AI-jem</p>
+
+        <!-- Empty State -->
+        {% if inbox_poruke.count == 0 %}
+        <div class="text-center py-16">
+            <i class="fas fa-inbox text-gray-300 text-7xl mb-4"></i>
+            <p class="text-xl text-gray-600 font-medium">Nema novih izvoda</p>
+            <p class="text-sm text-gray-500 mt-2">Email izvodi se automatski analiziraju</p>
         </div>
+
         {% else %}
-        <div class="space-y-3">
-            {% for item in inbox %}
-            <div class="border rounded-lg p-4 hover:bg-gray-50 transition hover:shadow-md">
-                <div class="flex justify-between items-start">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-1">
-                            <p class="font-semibold text-gray-800">{{ item.klijent }}</p>
-                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
-                                <i class="fas fa-university mr-1"></i>NLB izvod
-                            </span>
-                        </div>
-                        <p class="text-sm text-gray-600">
-                            <i class="fas fa-file-alt mr-1"></i>Svrha: {{ item.svrha }}
-                        </p>
-                        <p class="text-sm text-gray-500">
-                            <i class="fas fa-envelope mr-1"></i>From: {{ item.from_email }}
-                        </p>
-                        <p class="text-xs text-gray-400">
-                            <i class="fas fa-calendar mr-1"></i>{{ item.datum_transakcije|date:"d.m.Y" }}
-                        </p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xl font-bold text-green-600">{{ item.iznos }} KM</p>
-                        <div class="flex items-center gap-1 justify-end mt-1">
-                            <div class="w-16 bg-gray-200 rounded-full h-2">
-                                <div class="bg-green-500 h-2 rounded-full" style="width: {{ item.confidence }}%"></div>
+        <!-- Inbox Items -->
+        <div class="space-y-4">
+            {% for poruka in inbox_poruke %}
+            <div class="border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-all">
+                <!-- Header Row -->
+                <div class="bg-gradient-to-r from-blue-50 to-white p-4 border-b border-gray-200">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span
+                                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-1">
+                                    <i class="fas fa-university"></i>
+                                    {{ poruka.banka_naziv }}
+                                </span>
+                                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                                    {{ poruka.broj_transakcija }} transakcija
+                                </span>
+                                <span class="text-xs text-gray-500">
+                                    <i class="fas fa-calendar-alt mr-1"></i>
+                                    {{ poruka.datum_prijema|date:"d.m.Y H:i" }}
+                                </span>
+
+                                <!-- PDF LINK -->
+                                {% if poruka.pdf_fajl %}
+                                <a href="{{ poruka.pdf_fajl.url }}" target="_blank"
+                                    class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-medium flex items-center gap-1 hover:bg-red-200 transition">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>PDF</span>
+                                </a>
+                                {% endif %}
                             </div>
-                            <span class="text-xs text-green-600 font-semibold">{{ item.confidence }}% AI</span>
+                            <p class="text-sm text-gray-600">
+                                <i class="fas fa-envelope mr-1"></i>
+                                Od: <span class="font-medium">{{ poruka.from_email }}</span>
+                            </p>
+                            {% if poruka.subject %}
+                            <p class="text-sm text-gray-500 mt-1">
+                                <i class="fas fa-comment-alt mr-1"></i>
+                                {{ poruka.subject }}
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Summary Box -->
+                        <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 min-w-[280px]">
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Prihodi:</span>
+                                    <span class="text-lg font-bold text-green-600">+{{ poruka.ukupno_prihodi }}
+                                        KM</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm text-gray-600">Rashodi:</span>
+                                    <span class="text-lg font-bold text-red-600">-{{ poruka.ukupno_rashodi }} KM</span>
+                                </div>
+                                <div class="border-t border-gray-200 pt-2 flex justify-between items-center">
+                                    <span class="text-sm font-semibold text-gray-700">Neto:</span>
+                                    <span
+                                        class="text-xl font-bold {% if poruka.neto >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                        {{ poruka.neto }} KM
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- AI Confidence -->
+                            <div class="mt-3 pt-3 border-t border-gray-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-gray-500">AI pouzdanost:</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-20 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-green-500 h-2 rounded-full"
+                                                style="width: {{ poruka.confidence }}%"></div>
+                                        </div>
+                                        <span class="text-xs font-semibold text-green-600">{{ poruka.confidence }}%</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <!-- Transakcije Details -->
+                <div class="p-4 bg-gray-50">
+                    <div class="space-y-2">
+                        {% for trans in poruka.transakcije_json %}
+                        <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                            <div class="flex items-center gap-3">
+                                {% if trans.tip == 'prihod' %}
+                                <div class="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-arrow-down text-green-600"></i>
+                                </div>
+                                {% else %}
+                                <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i class="fas fa-arrow-up text-red-600"></i>
+                                </div>
+                                {% endif %}
+
+                                <div>
+                                    <p class="font-medium text-gray-800">{{ trans.opis }}</p>
+                                    <p class="text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        {{ trans.datum }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="text-right">
+                                <p
+                                    class="text-lg font-bold {% if trans.tip == 'prihod' %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {% if trans.tip == 'prihod' %}+{% else %}{% endif %}{{ trans.iznos|floatformat:2 }}
+                                    KM
+                                </p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-gray-100 p-4 flex justify-between items-center">
+                    <form method="post" action="{% url 'inbox_delete' poruka.id %}"
+                        onsubmit="return confirm('Da li ste sigurni?')" class="inline">
+                        {% csrf_token %}
+                        <button type="submit"
+                            class="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2">
+                            <i class="fas fa-trash"></i>
+                            <span>Obriši</span>
+                        </button>
+                    </form>
+
+                    <form method="post" action="{% url 'inbox_confirm' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="inbox_id" value="{{ poruka.id }}">
+                        <button type="submit"
+                            class="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                            <i class="fas fa-check"></i>
+                            <span>Odobri i uvezi</span>
+                        </button>
+                    </form>
                 </div>
             </div>
             {% endfor %}
@@ -69,21 +198,32 @@
 </div>
 
 <script>
-async function confirmAll() {
-    const formData = new FormData();
-    formData.append('confirm_all', 'true');
-    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-    
-    const response = await fetch('{% url "inbox" %}', {
-        method: 'POST',
-        body: formData
-    });
-    
-    const data = await response.json();
-    if (data.success) {
-        alert(`✅ Uvezeno ${data.count} prihoda iz Email Inbox-a!`);
-        window.location.reload();
+    async function confirmAll() {
+        if (!confirm('Da li ste sigurni da želite da uvezete SVE izvode odjednom?')) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        try {
+            const response = await fetch('{% url "inbox_confirm_all" %}', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert(`✅ Uvezeno ${data.count} transakcija!`);
+                window.location.reload();
+            } else {
+                alert(`❌ Greška: ${data.error}`);
+            }
+        } catch (error) {
+            alert('❌ Greška pri slanju zahtjeva');
+            console.error(error);
+        }
     }
-}
 </script>
 {% endblock %}

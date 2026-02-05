@@ -14,7 +14,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "mega-gained-wallet-antiques.trycloudflare.com",
+    "8046d20b562a.ngrok-free.app",
 ]
 
 # Application definition
@@ -180,13 +180,13 @@ CACHES = {
 # ============================================
 # SECURITY SETTINGS (Za produkciju)
 # ============================================
-
+APPEND_SLASH = False
 # U produkciji promijeni na True:
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
-    "https://mega-gained-wallet-antiques.trycloudflare.com",
+    "https://8046d20b562a.ngrok-free.app",
 ]
 # Ovo ostavi True:
 SECURE_BROWSER_XSS_FILTER = True

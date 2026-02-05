@@ -9,14 +9,11 @@ from .models import (
     EmailInbox,
     SystemLog,
     FailedRequest,
-    Currency,
     UserPreferences,
     AuditLog,
     PredictiveAnalytics,
     GodisnjiIzvjestaj,
     EmailNotification,
-    UploadedDocument,
-    CalendarEvent,
     SistemskiParametri,
     Banka,
 )
@@ -264,15 +261,90 @@ class BilansAdmin(admin.ModelAdmin):
 class EmailInboxAdmin(admin.ModelAdmin):
     list_display = [
         "korisnik",
-        "klijent",
-        "iznos",
-        "datum_transakcije",
-        "confidence",
-        "potvrdjeno",
+        "from_email",
+        "banka_naziv",
+        "broj_transakcija",
+        "ukupno_prihodi",
+        "ukupno_rashodi",
+        "procesuirano",
+        "datum_prijema",
     ]
-    list_filter = ["potvrdjeno", "datum_transakcije"]
-    search_fields = ["klijent", "from_email", "korisnik__ime"]
-    date_hierarchy = "datum_transakcije"
+
+    list_filter = ["procesuirano", "banka_naziv", "datum_prijema"]
+    search_fields = ["from_email", "subject", "korisnik__ime", "pdf_hash"]
+    date_hierarchy = "datum_prijema"
+    readonly_fields = [
+        "pdf_hash",
+        "datum_prijema",
+        "datum_odobravanja",
+        "transakcije_display",
+        "ukupno_prihodi",
+        "ukupno_rashodi",
+        "neto",
+    ]
+
+    fieldsets = (
+        (
+            "Email Info",
+            {"fields": ("korisnik", "from_email", "subject", "banka_naziv")},
+        ),
+        ("PDF Fajl", {"fields": ("pdf_fajl", "pdf_hash")}),
+        (
+            "Parsovane Transakcije",
+            {"fields": ("transakcije_display", "confidence"), "classes": ("collapse",)},
+        ),
+        ("Ukupno", {"fields": ("ukupno_prihodi", "ukupno_rashodi", "neto")}),
+        ("Status", {"fields": ("procesuirano", "datum_prijema", "datum_odobravanja")}),
+    )
+
+    def broj_transakcija(self, obj):
+        if obj.transakcije_json:
+            return len(obj.transakcije_json)
+        return 0
+
+    broj_transakcija.short_description = "Broj trans."
+
+    def ukupno_prihodi(self, obj):
+        return f"{obj.get_ukupno_prihodi():.2f} KM"
+
+    ukupno_prihodi.short_description = "Prihodi"
+
+    def ukupno_rashodi(self, obj):
+        return f"{obj.get_ukupno_rashodi():.2f} KM"
+
+    ukupno_rashodi.short_description = "Rashodi"
+
+    def neto(self, obj):
+        neto = obj.get_neto()
+        color = "green" if neto >= 0 else "red"
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{:.2f} KM</span>', color, neto
+        )
+
+    neto.short_description = "Neto"
+
+    def transakcije_display(self, obj):
+        if not obj.transakcije_json:
+            return "Nema transakcija"
+
+        html = '<table style="width: 100%; border-collapse: collapse;">'
+        html += '<tr style="background: #f0f0f0;"><th>Datum</th><th>Opis</th><th>Tip</th><th>Iznos</th></tr>'
+
+        for trans in obj.transakcije_json:
+            tip_color = "green" if trans["tip"] == "prihod" else "red"
+            html += f"""
+            <tr style="border-bottom: 1px solid #ddd;">
+                <td style="padding: 5px;">{trans['datum']}</td>
+                <td style="padding: 5px;">{trans['opis']}</td>
+                <td style="padding: 5px; color: {tip_color}; font-weight: bold;">{trans['tip'].upper()}</td>
+                <td style="padding: 5px; text-align: right; font-weight: bold;">{trans['iznos']:.2f} KM</td>
+            </tr>
+            """
+
+        html += "</table>"
+        return format_html(html)
+
+    transakcije_display.short_description = "Transakcije"
 
 
 # ============================================
@@ -302,10 +374,6 @@ class FailedRequestAdmin(admin.ModelAdmin):
 # ============================================
 
 
-@admin.register(Currency)
-class CurrencyAdmin(admin.ModelAdmin):
-    list_display = ["code", "name", "rate_to_km", "last_updated"]
-    search_fields = ["code", "name"]
 
 
 @admin.register(UserPreferences)
@@ -381,33 +449,7 @@ class EmailNotificationAdmin(admin.ModelAdmin):
     date_hierarchy = "scheduled_date"
 
 
-@admin.register(UploadedDocument)
-class UploadedDocumentAdmin(admin.ModelAdmin):
-    list_display = [
-        "korisnik",
-        "document_type",
-        "original_filename",
-        "processed",
-        "uploaded_at",
-    ]
-    list_filter = ["document_type", "processed", "uploaded_at"]
-    search_fields = ["korisnik__ime", "original_filename"]
-    date_hierarchy = "uploaded_at"
 
-
-@admin.register(CalendarEvent)
-class CalendarEventAdmin(admin.ModelAdmin):
-    list_display = [
-        "korisnik",
-        "event_type",
-        "title",
-        "start_date",
-        "all_day",
-        "reminder_sent",
-    ]
-    list_filter = ["event_type", "all_day", "reminder_sent", "start_date"]
-    search_fields = ["korisnik__ime", "title", "description"]
-    date_hierarchy = "start_date"
 
 
 # ============================================

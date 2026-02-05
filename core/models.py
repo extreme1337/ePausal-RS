@@ -5,6 +5,7 @@ from datetime import timedelta
 from decimal import Decimal
 from django.core.validators import MinValueValidator
 import json
+import hashlib
 
 # ============================================
 # OSNOVNI MODELI (OSTAJU ISTI)
@@ -357,24 +358,138 @@ class Bilans(models.Model):
 
 
 class EmailInbox(models.Model):
-    korisnik = models.ForeignKey(
-        Korisnik, on_delete=models.CASCADE, related_name="inbox"
-    )
-    from_email = models.EmailField()
-    klijent = models.CharField(max_length=200)
-    iznos = models.DecimalField(max_digits=10, decimal_places=2)
-    svrha = models.CharField(max_length=200)
-    datum_transakcije = models.DateField()
-    confidence = models.IntegerField(default=95)
-    potvrdjeno = models.BooleanField(default=False)
-    datum_kreiranja = models.DateTimeField(auto_now_add=True)
+    """Email inbox - parsira izvode i prikazuje transakcije prije odobrenja"""
 
-    def __str__(self):
-        return f"{self.klijent} - {self.iznos} KM"
+    korisnik = models.ForeignKey(
+        Korisnik, on_delete=models.CASCADE, related_name="inbox_poruke"
+    )
+
+    # Email metadata
+    from_email = models.EmailField(verbose_name="Od koga")
+    subject = models.CharField(
+        max_length=255, blank=True, null=True, verbose_name="Naslov"
+    )
+
+    # PDF izvod
+    pdf_fajl = models.FileField(upload_to="inbox_pdf/%Y/%m/", blank=True, null=True)
+    pdf_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name="PDF Hash (za duplikat detekciju)",
+    )
+
+    # Banka info
+    banka_naziv = models.CharField(max_length=100, blank=True, verbose_name="Banka")
+
+    # PARSOVANE TRANSAKCIJE - čuvamo kao JSON
+    transakcije_json = models.JSONField(
+        blank=True,
+        null=True,
+        verbose_name="Parsovane transakcije",
+        help_text="Lista transakcija: [{datum, opis, iznos, tip}, ...]",
+    )
+
+    # Status
+    procesuirano = models.BooleanField(default=False, verbose_name="Odobreno")
+    datum_prijema = models.DateTimeField(auto_now_add=True, verbose_name="Primljeno")
+    datum_odobravanja = models.DateTimeField(
+        blank=True, null=True, verbose_name="Odobreno"
+    )
+
+    # AI confidence
+    confidence = models.IntegerField(default=0, verbose_name="AI Pouzdanost (%)")
 
     class Meta:
-        ordering = ["-datum_transakcije"]
+        ordering = ["-datum_prijema"]
+        verbose_name = "Email Inbox"
         verbose_name_plural = "Email Inbox"
+        indexes = [
+            models.Index(fields=["korisnik", "procesuirano"]),
+            models.Index(fields=["pdf_hash"]),
+        ]
+
+    def __str__(self):
+        return f"Izvod: {self.korisnik.ime} - {self.datum_prijema.strftime('%d.%m.%Y')}"
+
+    def calculate_pdf_hash(self):
+        """Izračunaj SHA256 hash PDF fajla"""
+        if not self.pdf_fajl:
+            return None
+
+        self.pdf_fajl.seek(0)
+        file_hash = hashlib.sha256()
+
+        # Čitaj u chunk-ovima za velike fajlove
+        for chunk in iter(lambda: self.pdf_fajl.read(4096), b""):
+            file_hash.update(chunk)
+
+        self.pdf_fajl.seek(0)
+        return file_hash.hexdigest()
+
+    def parse_pdf(self):
+        """Parsuj PDF i sačuvaj transakcije"""
+        from .utils import parse_bank_statement_pdf
+
+        if not self.pdf_fajl:
+            return []
+
+        transakcije = parse_bank_statement_pdf(self.pdf_fajl)
+
+        # Konvertuj u JSON-friendly format
+        self.transakcije_json = [
+            {
+                "datum": t["datum"].strftime("%Y-%m-%d"),
+                "opis": t["opis"],
+                "iznos": float(t["iznos"]),
+                "tip": "prihod" if t["iznos"] > 0 else "rashod",
+            }
+            for t in transakcije
+        ]
+
+        self.save()
+        return self.transakcije_json
+
+    def get_ukupno_prihodi(self):
+        """Ukupan iznos prihoda"""
+        if not self.transakcije_json:
+            return Decimal("0")
+        return sum(
+            Decimal(str(t["iznos"])) for t in self.transakcije_json if t["iznos"] > 0
+        )
+
+    def get_ukupno_rashodi(self):
+        """Ukupan iznos rashoda"""
+        if not self.transakcije_json:
+            return Decimal("0")
+        return sum(
+            Decimal(str(abs(t["iznos"])))
+            for t in self.transakcije_json
+            if t["iznos"] < 0
+        )
+
+    def get_neto(self):
+        """Neto razlika"""
+        return self.get_ukupno_prihodi() - self.get_ukupno_rashodi()
+
+    @classmethod
+    def check_duplicate(cls, pdf_file, korisnik):
+        """Provjeri da li PDF već postoji"""
+        pdf_file.seek(0)
+        file_hash = hashlib.sha256()
+
+        for chunk in iter(lambda: pdf_file.read(4096), b""):
+            file_hash.update(chunk)
+
+        pdf_file.seek(0)
+        pdf_hash = file_hash.hexdigest()
+
+        # Provjeri da li hash postoji
+        return (
+            cls.objects.filter(korisnik=korisnik, pdf_hash=pdf_hash).exists(),
+            pdf_hash,
+        )
 
 
 class SystemLog(models.Model):
@@ -408,21 +523,6 @@ class FailedRequest(models.Model):
         verbose_name_plural = "Failed Requests"
 
 
-class Currency(models.Model):
-    """Valute i exchange rates"""
-
-    code = models.CharField(max_length=3, unique=True)
-    name = models.CharField(max_length=50)
-    rate_to_km = models.DecimalField(max_digits=10, decimal_places=4)
-    last_updated = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.code} - {self.rate_to_km} KM"
-
-    class Meta:
-        verbose_name_plural = "Currencies"
-
-
 class UserPreferences(models.Model):
     """Korisničke preferencije"""
 
@@ -441,9 +541,7 @@ class UserPreferences(models.Model):
     )
     language = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default="sr")
     theme = models.CharField(max_length=10, choices=THEME_CHOICES, default="light")
-    default_currency = models.ForeignKey(
-        Currency, on_delete=models.SET_NULL, null=True, blank=True
-    )
+
     email_notifications = models.BooleanField(default=True)
     payment_reminders = models.BooleanField(default=True)
 
@@ -550,63 +648,6 @@ class EmailNotification(models.Model):
     class Meta:
         ordering = ["scheduled_date"]
         verbose_name_plural = "Email Notifications"
-
-
-class UploadedDocument(models.Model):
-    """Upload-ovani dokumenti"""
-
-    DOCUMENT_TYPES = [
-        ("invoice", "Faktura"),
-        ("receipt", "Račun"),
-        ("contract", "Ugovor"),
-        ("other", "Ostalo"),
-    ]
-
-    korisnik = models.ForeignKey(
-        Korisnik, on_delete=models.CASCADE, related_name="uploaded_docs"
-    )
-    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPES)
-    file = models.FileField(upload_to="uploads/")
-    original_filename = models.CharField(max_length=255)
-    extracted_data = models.JSONField(null=True, blank=True)
-    processed = models.BooleanField(default=False)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.original_filename} ({self.document_type})"
-
-    class Meta:
-        ordering = ["-uploaded_at"]
-        verbose_name_plural = "Uploaded Documents"
-
-
-class CalendarEvent(models.Model):
-    """Kalendar događaja"""
-
-    EVENT_TYPES = [
-        ("payment_deadline", "Rok plaćanja"),
-        ("invoice_due", "Faktura dospjeva"),
-        ("meeting", "Sastanak"),
-        ("reminder", "Podsjetnik"),
-    ]
-
-    korisnik = models.ForeignKey(
-        Korisnik, on_delete=models.CASCADE, related_name="calendar_events"
-    )
-    event_type = models.CharField(max_length=30, choices=EVENT_TYPES)
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    start_date = models.DateTimeField()
-    end_date = models.DateTimeField(null=True, blank=True)
-    all_day = models.BooleanField(default=False)
-    reminder_sent = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"{self.title} - {self.start_date.strftime('%d.%m.%Y')}"
-
-    class Meta:
-        ordering = ["start_date"]
-        verbose_name_plural = "Calendar Events"
 
 
 class SistemskiParametri(models.Model):

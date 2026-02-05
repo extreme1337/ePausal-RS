@@ -1,3 +1,5 @@
+import base64
+import io
 from pyexpat.errors import messages
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -18,15 +20,10 @@ from .utils import (
     generate_bilans_csv,
     generate_income_predictions,
     get_chart_data_prihodi,
-    send_payment_reminder,
     generate_payment_slip_png,
     check_rate_limit,
     log_audit,
-    process_uploaded_pdf,
     generate_godisnji_izvjestaj_pdf,
-    create_payment_deadline_events,
-    convert_currency,
-    update_exchange_rates,
     parse_bank_statement_pdf,
     get_client_ip,
 )
@@ -36,6 +33,7 @@ from django.contrib import messages
 from django.db import transaction
 from .models import Faktura, StavkaFakture
 from datetime import date, datetime
+import re
 
 # ============================================
 # HELPER FUNCTIONS
@@ -347,6 +345,20 @@ def dashboard(request):
     """Enhanced dashboard sa Chart.js i AI predikcijama"""
     korisnik = request.user.korisnik
 
+    # Calculate subscription days left
+    if korisnik.trial_end_date:
+        days_left = (korisnik.trial_end_date - timezone.now().date()).days
+        subscription_days_left = max(0, days_left)
+    else:
+        # Auto-set trial_end_date if missing
+        korisnik.trial_end_date = korisnik.registrovan + timedelta(days=30)
+        korisnik.save()
+        subscription_days_left = (korisnik.trial_end_date - timezone.now().date()).days
+
+    # Plan prices
+    plan_prices = {"Starter": 15, "Professional": 29, "Business": 49, "Enterprise": 99}
+    current_plan_price = plan_prices.get(korisnik.plan, 29)
+
     # Statistike
     prihodi = korisnik.prihodi.all()
     ukupan_prihod = sum([p.iznos for p in prihodi])
@@ -375,6 +387,8 @@ def dashboard(request):
 
     context = {
         "korisnik": korisnik,
+        "subscription_days_left": subscription_days_left,
+        "current_plan_price": current_plan_price,
         "stats": {
             "ukupno": ukupan_prihod,
             "porez": porez,
@@ -386,12 +400,357 @@ def dashboard(request):
         "pred_labels": json.dumps(pred_labels),
         "pred_values": json.dumps(pred_values),
         "pred_confidence": json.dumps(pred_confidence),
-        "inbox_count": korisnik.inbox.filter(potvrdjeno=False).count(),
+        # "inbox_count": korisnik.inbox.filter(potvrdjeno=False).count(),
         "fakture_count": request.user.fakture.count(),
         "uplatnice_count": korisnik.uplatnice.count(),
     }
 
     return render(request, "core/dashboard.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def inbox_confirm(request):
+    """Odobri izvod i uvezi u Prihode/Rashode"""
+    inbox_id = request.POST.get("inbox_id")
+
+    if not inbox_id:
+        messages.error(request, "❌ Nedostaje inbox_id")
+        return redirect("inbox")
+
+    try:
+        inbox = get_object_or_404(
+            EmailInbox, id=inbox_id, korisnik=request.user.korisnik, procesuirano=False
+        )
+
+        if not inbox.transakcije_json:
+            messages.error(request, "❌ Nema parsovanih transakcija")
+            return redirect("inbox")
+
+        # Uvezi sve transakcije
+        with transaction.atomic():
+            imported_count = 0
+
+            for trans in inbox.transakcije_json:
+                # Konvertuj datum iz stringa
+                datum = datetime.strptime(trans["datum"], "%Y-%m-%d").date()
+                iznos = Decimal(str(abs(trans["iznos"])))
+                vrsta = trans["tip"]
+
+                # Provjeri duplikat u Prihod tabeli
+                duplikat = Prihod.objects.filter(
+                    korisnik=inbox.korisnik,
+                    datum=datum,
+                    iznos=iznos,
+                    vrsta=vrsta,
+                    opis=trans["opis"],
+                ).exists()
+
+                if duplikat:
+                    print(f"⏭️ SKIP duplikat: {trans['opis']}")
+                    continue
+
+                # Kreiraj Prihod/Rashod
+                Prihod.objects.create(
+                    korisnik=inbox.korisnik,
+                    datum=datum,
+                    mjesec=datum.strftime("%Y-%m"),
+                    iznos=iznos,
+                    vrsta=vrsta,
+                    opis=trans["opis"],
+                    izvod_fajl=inbox.pdf_fajl,
+                )
+
+                imported_count += 1
+
+            # Označi kao obrađeno
+            inbox.procesuirano = True
+            inbox.datum_odobravanja = timezone.now()
+            inbox.save()
+
+            # Log
+            SystemLog.objects.create(
+                user=request.user,
+                action="INBOX_CONFIRM",
+                status="success",
+                ip_address=get_client_ip(request),
+                details=f"Imported {imported_count} transactions from inbox {inbox.id}",
+            )
+
+        messages.success(request, f"✅ Uvezeno {imported_count} transakcija!")
+
+    except Exception as e:
+        messages.error(request, f"❌ Greška: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+
+    return redirect("inbox")
+
+
+@login_required
+@require_http_methods(["POST"])
+def inbox_confirm_all(request):
+    """Odobri SVE izvode odjednom"""
+    korisnik = request.user.korisnik
+
+    inbox_items = korisnik.inbox_poruke.filter(procesuirano=False)
+
+    if not inbox_items.exists():
+        return JsonResponse({"success": False, "error": "Nema izvoda za odobrenje"})
+
+    try:
+        total_imported = 0
+
+        with transaction.atomic():
+            for inbox in inbox_items:
+                if not inbox.transakcije_json:
+                    continue
+
+                for trans in inbox.transakcije_json:
+                    datum = datetime.strptime(trans["datum"], "%Y-%m-%d").date()
+                    iznos = Decimal(str(abs(trans["iznos"])))
+                    vrsta = trans["tip"]
+
+                    # Skip duplikata
+                    if Prihod.objects.filter(
+                        korisnik=korisnik,
+                        datum=datum,
+                        iznos=iznos,
+                        vrsta=vrsta,
+                        opis=trans["opis"],
+                    ).exists():
+                        continue
+
+                    Prihod.objects.create(
+                        korisnik=korisnik,
+                        datum=datum,
+                        mjesec=datum.strftime("%Y-%m"),
+                        iznos=iznos,
+                        vrsta=vrsta,
+                        opis=trans["opis"],
+                        izvod_fajl=inbox.pdf_fajl,
+                    )
+
+                    total_imported += 1
+
+                inbox.procesuirano = True
+                inbox.datum_odobravanja = timezone.now()
+                inbox.save()
+
+        return JsonResponse({"success": True, "count": total_imported})
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def inbox_delete(request, inbox_id):
+    """Obriši izvod iz inboxa"""
+    try:
+        inbox = get_object_or_404(
+            EmailInbox, id=inbox_id, korisnik=request.user.korisnik
+        )
+
+        inbox.delete()
+        messages.success(request, "🗑️ Izvod obrisan")
+
+    except Exception as e:
+        messages.error(request, f"❌ Greška: {str(e)}")
+
+    return redirect("inbox")
+
+
+@login_required
+@require_http_methods(["POST"])
+def change_plan(request):
+    """Promjena plana sa upgrade/downgrade logikom i prorated billing"""
+    try:
+        korisnik = request.user.korisnik
+        data = json.loads(request.body)
+
+        new_plan = data.get("new_plan")
+        timing = data.get("timing", "next_month")
+
+        plan_prices = {
+            "Starter": 15,
+            "Professional": 29,
+            "Business": 49,
+            "Enterprise": 99,
+        }
+
+        plan_order = {"Starter": 1, "Professional": 2, "Business": 3, "Enterprise": 4}
+
+        current_price = plan_prices[korisnik.plan]
+        new_price = plan_prices[new_plan]
+
+        # Determine upgrade or downgrade
+        is_upgrade = plan_order[new_plan] > plan_order[korisnik.plan]
+
+        if is_upgrade:
+            if timing == "immediate":
+                # UPGRADE - Immediate with prorated billing
+                trial_end = korisnik.trial_end_date or (
+                    korisnik.registrovan + timedelta(days=30)
+                )
+                today = timezone.now().date()
+                days_left = max(0, (trial_end - today).days)
+
+                # Calculate prorated amount
+                price_difference = new_price - current_price
+                prorated_amount = round((price_difference * days_left / 30), 2)
+
+                # DON'T update plan yet - wait for payment
+
+                SystemLog.objects.create(
+                    user=request.user,
+                    action="PLAN_UPGRADE_INITIATED",
+                    status="pending",
+                    ip_address=get_client_ip(request),
+                    details=f"Initiated upgrade from {korisnik.plan} to {new_plan}. Prorated: {prorated_amount} KM for {days_left} days. Awaiting payment.",
+                )
+
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "requires_payment": True,
+                        "amount_to_charge": f"{prorated_amount:.2f}",
+                        "prorated_details": f"Razlika {price_difference} KM × {days_left} dana / 30 = {prorated_amount:.2f} KM",
+                        "effective_date": "odmah",
+                        "new_plan": new_plan,
+                        "days_left": days_left,
+                    }
+                )
+            else:
+                # UPGRADE - Next month (no payment needed yet)
+                trial_end = korisnik.trial_end_date or (
+                    korisnik.registrovan + timedelta(days=30)
+                )
+                next_period_start = trial_end + timedelta(days=1)
+
+                # TODO: Save scheduled plan change in database (create ScheduledPlanChange model)
+
+                SystemLog.objects.create(
+                    user=request.user,
+                    action="PLAN_UPGRADE_SCHEDULED",
+                    status="success",
+                    ip_address=get_client_ip(request),
+                    details=f"Scheduled upgrade from {korisnik.plan} to {new_plan} on {next_period_start}",
+                )
+
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "requires_payment": False,
+                        "effective_date": next_period_start.strftime("%d.%m.%Y"),
+                        "new_plan": new_plan,
+                    }
+                )
+        else:
+            # DOWNGRADE - Always next month
+            trial_end = korisnik.trial_end_date or (
+                korisnik.registrovan + timedelta(days=30)
+            )
+            next_period_start = trial_end + timedelta(days=1)
+
+            # TODO: Save scheduled plan change
+
+            SystemLog.objects.create(
+                user=request.user,
+                action="PLAN_DOWNGRADE_SCHEDULED",
+                status="success",
+                ip_address=get_client_ip(request),
+                details=f"Scheduled downgrade from {korisnik.plan} to {new_plan} on {next_period_start}",
+            )
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "requires_payment": False,
+                    "effective_date": next_period_start.strftime("%d.%m.%Y"),
+                    "new_plan": new_plan,
+                }
+            )
+
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@login_required
+def process_upgrade_payment(request):
+    """Procesira prorated payment za upgrade plana"""
+    if request.method == "POST":
+        try:
+            korisnik = request.user.korisnik
+
+            # Payment details
+            card_number = request.POST.get("card_number", "").replace(" ", "")
+            expiry = request.POST.get("expiry")
+            cvv = request.POST.get("cvv")
+
+            # Plan change details
+            new_plan = request.POST.get("new_plan")
+            prorated_amount = Decimal(request.POST.get("prorated_amount", "0"))
+
+            # Validacija
+            if len(card_number) != 16:
+                messages.error(
+                    request, "❌ Neispravan broj kartice (mora biti 16 cifara)"
+                )
+                return redirect("dashboard")
+
+            if len(cvv) != 3:
+                messages.error(request, "❌ Neispravan CVV (mora biti 3 cifre)")
+                return redirect("dashboard")
+
+            # Validacija expiry
+            if not expiry or "/" not in expiry:
+                messages.error(request, "❌ Neispravan datum isteka kartice")
+                return redirect("dashboard")
+
+            # OVDJE BI ŠAO PRAVI PAYMENT GATEWAY (Stripe, PayPal, etc.)
+            # Za sada simuliramo uspješno plaćanje
+
+            # Simulacija payment processing
+            import time
+
+            time.sleep(0.5)  # Simulacija API call-a
+
+            # Payment successful - update plan
+            old_plan = korisnik.plan
+            korisnik.plan = new_plan
+            korisnik.save()
+
+            # Log successful payment
+            SystemLog.objects.create(
+                user=request.user,
+                action="PRORATED_PAYMENT_SUCCESS",
+                status="success",
+                ip_address=get_client_ip(request),
+                details=f"Prorated upgrade payment: {prorated_amount} KM. Plan changed from {old_plan} to {new_plan}. Card: ****{card_number[-4:]}",
+            )
+
+            messages.success(
+                request,
+                f"✅ Plaćanje uspješno! Plan promijenjen sa {old_plan} na {new_plan}. Naplaćeno: {prorated_amount} KM",
+            )
+
+            return redirect("dashboard")
+
+        except Exception as e:
+            SystemLog.objects.create(
+                user=request.user,
+                action="PRORATED_PAYMENT_FAILED",
+                status="error",
+                ip_address=get_client_ip(request),
+                details=f"Payment failed: {str(e)}",
+            )
+
+            messages.error(request, f"❌ Greška pri plaćanju: {str(e)}")
+            return redirect("dashboard")
+
+    return redirect("dashboard")
 
 
 # ============================================
@@ -564,32 +923,415 @@ def prihodi_view(request):
 
 @login_required
 def inbox_view(request):
-    """Email inbox - AI parsing"""
+    """Email inbox - SAMO prikazivanje"""
     korisnik = request.user.korisnik
 
+    # Provjera plana
     if korisnik.plan not in ["Professional", "Business", "Enterprise"]:
+        messages.warning(request, "Vaš plan ne podržava automatski uvoz.")
         return redirect("dashboard")
 
-    if request.method == "POST" and "confirm_all" in request.POST:
-        inbox_items = korisnik.inbox.filter(potvrdjeno=False)
-        count = inbox_items.count()
+    # Inbox poruke koje NISU odobrene
+    inbox_poruke = korisnik.inbox_poruke.filter(procesuirano=False).order_by(
+        "-datum_prijema"
+    )
 
-        for item in inbox_items:
-            item.potvrdjeno = True
-            item.save()
-
-        SystemLog.objects.create(
-            user=request.user,
-            action="EMAIL_IMPORT",
-            status="success",
-            ip_address=get_client_ip(request),
-            details=f"Uvezeno {count} transakcija",
+    # Dodaj dodatne info za svaki inbox item
+    for poruka in inbox_poruke:
+        poruka.ukupno_prihodi = poruka.get_ukupno_prihodi()
+        poruka.ukupno_rashodi = poruka.get_ukupno_rashodi()
+        poruka.neto = poruka.get_neto()
+        poruka.broj_transakcija = (
+            len(poruka.transakcije_json) if poruka.transakcije_json else 0
         )
 
-        return JsonResponse({"success": True, "count": count})
+    context = {"inbox_poruke": inbox_poruke, "total_count": inbox_poruke.count()}
 
-    inbox = korisnik.inbox.filter(potvrdjeno=False)
-    return render(request, "core/inbox.html", {"inbox": inbox})
+    return render(request, "core/inbox.html", context)
+
+    # 3. Logika za GET (Prikaz stranice)
+    # ISPRAVLJENO: korisnik.inbox_poruke.all()
+    inbox_poruke = korisnik.inbox_poruke.all()
+
+    return render(request, "core/inbox.html", {"inbox_poruke": inbox_poruke})
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+
+@login_required
+def inbox_confirm(request):
+    if request.method == "POST":
+        inbox_id = request.POST.get("inbox_id")
+        stavka = get_object_or_404(EmailInbox, id=inbox_id, korisnik__user=request.user)
+
+        if not stavka.pdf_fajl:
+            messages.error(request, "Nema PDF fajla za ovaj unos.")
+            return redirect("inbox")
+
+        # POZIV TVOG PARSERA IZ UTILS.PY
+        transakcije = parse_bank_statement_pdf(stavka.pdf_fajl)
+
+        if transakcije:
+            with transaction.atomic():
+                for t in transakcije:
+                    iznos = Decimal(str(t["iznos"]))
+                    # Tvoj parser vraća negativne iznose za rashode
+                    vrsta = "prihod" if iznos > 0 else "rashod"
+
+                    Prihod.objects.create(
+                        korisnik=stavka.korisnik,
+                        datum=t["datum"],
+                        mjesec=t["datum"].strftime("%Y-%m"),
+                        iznos=abs(iznos),
+                        vrsta=vrsta,
+                        opis=t["opis"],
+                        izvod_fajl=stavka.pdf_fajl,  # Link ka originalu
+                    )
+
+                stavka.procesuirano = True
+                stavka.save()
+            messages.success(request, f"Uvezeno {len(transakcije)} transakcija!")
+        else:
+            messages.error(request, "Parser nije prepoznao podatke u PDF-u.")
+
+    return redirect("inbox")
+
+
+from django.core.files.base import ContentFile
+
+
+@csrf_exempt
+def email_webhook(request):
+    """
+    CloudMailin webhook - podržava JSON i Multipart format
+
+    Test mode: test+JIB@cloudmailin.net
+    Production: JIB u Subject liniji
+    """
+
+    # GET request - CloudMailin verifikacija
+    if request.method == "GET":
+        print("✅ CloudMailin verifikacija - GET request")
+        return HttpResponse("Webhook is ready", status=200)
+
+    # POST request - obrada emaila
+    if request.method != "POST":
+        return HttpResponse("Method not allowed", status=405)
+
+    print("\n" + "=" * 70)
+    print("📧 EMAIL WEBHOOK AKTIVIRAN")
+    print("=" * 70)
+
+    try:
+        # ============================================
+        # PARSUJ REQUEST - JSON ili Multipart
+        # ============================================
+        content_type = request.META.get("CONTENT_TYPE", "")
+        print(f"Content-Type: {content_type}")
+
+        if "application/json" in content_type:
+            # JSON format
+            data = json.loads(request.body)
+            envelope = data.get("envelope", {})
+            headers = data.get("headers", {})
+            attachments = data.get("attachments", [])
+
+        elif (
+            "multipart/form-data" in content_type
+            or "application/x-www-form-urlencoded" in content_type
+        ):
+            # Multipart format (CloudMailin default)
+            print("📦 Multipart format detected")
+
+            # Envelope podaci
+            to_address = request.POST.get("envelope[to]", "")
+            from_address = request.POST.get("envelope[from]", "")
+            subject = request.POST.get(
+                "headers[Subject]", request.POST.get("subject", "")
+            )
+
+            envelope = {"to": to_address, "from": from_address}
+            headers = {"Subject": subject}
+
+            # Attachments iz FILES
+            attachments = []
+
+            for key in request.FILES:
+                file = request.FILES[key]
+
+                # Čitaj file content
+                file_content = file.read()
+
+                # Enkoduj u base64 (kao što bi JSON radio)
+                content_base64 = base64.b64encode(file_content).decode("utf-8")
+
+                attachments.append(
+                    {
+                        "file_name": file.name,
+                        "content_type": file.content_type,
+                        "content": content_base64,
+                    }
+                )
+
+                print(
+                    f"📎 Attachment: {file.name} ({file.content_type}, {len(file_content)} bytes)"
+                )
+
+        else:
+            print(f"❌ Unsupported content type: {content_type}")
+            return HttpResponse("Unsupported content type", status=400)
+
+        to_address = envelope.get("to", "")
+        from_address = envelope.get("from", "")
+        subject = headers.get("Subject", "")
+
+        print(f"FROM: {from_address}")
+        print(f"TO: {to_address}")
+        print(f"SUBJECT: {subject}")
+
+        jib = None
+        extraction_method = None
+
+        # ============================================
+        # METODA 1: EKSTRAKTUJ JIB IZ TO ADRESE (+ ALIAS)
+        # ============================================
+        if "cloudmailin.net" in to_address.lower():
+            print("\n🧪 TEST MODE: Detekcija + alias...")
+
+            if "+" in to_address:
+                match = re.search(r"\+(\d{13})@", to_address)
+
+                if match:
+                    jib = match.group(1)
+                    extraction_method = "TO adresa (+ alias)"
+                    print(f"✅ JIB ekstraktovan iz TO adrese: {jib}")
+                else:
+                    match = re.search(r"\+(\d+)@", to_address)
+                    if match:
+                        potential_jib = match.group(1)
+                        if len(potential_jib) == 13:
+                            jib = potential_jib
+                            extraction_method = "TO adresa (+ alias)"
+                            print(f"✅ JIB ekstraktovan iz TO adrese: {jib}")
+                        else:
+                            print(
+                                f"⚠️ Broj nakon + nije 13 cifara: {potential_jib} (dužina: {len(potential_jib)})"
+                            )
+
+        # ============================================
+        # METODA 2: EKSTRAKTUJ JIB IZ SUBJECT-a
+        # ============================================
+        if not jib:
+            print("\n🔍 Tražim JIB u Subject liniji...")
+
+            jib_match = re.search(r"JIB[:\s]*(\d{13})", subject, re.IGNORECASE)
+
+            if not jib_match:
+                jib_match = re.search(r"\b(\d{13})\b", subject)
+
+            if jib_match:
+                jib = jib_match.group(1)
+                extraction_method = "Subject linija"
+                print(f"✅ JIB ekstraktovan iz Subject-a: {jib}")
+
+        # ============================================
+        # VALIDACIJA: JIB MORA BITI PRONAĐEN
+        # ============================================
+        if not jib:
+            print("\n❌ JIB nije pronađen!")
+            print("   Pokušaj:")
+            print("   1. Test: test+4512358270004@54223ab7518b75af4c91.cloudmailin.net")
+            print("   2. Prod: Subject sa 'JIB:4512358270004'")
+            return HttpResponse(
+                "JIB not found. Use: test+JIB@cloudmailin.net or add JIB in subject",
+                status=400,
+            )
+
+        print(f"\n✅ JIB: {jib} (metoda: {extraction_method})")
+
+        # ============================================
+        # PRONAĐI KORISNIKA
+        # ============================================
+        try:
+            korisnik = Korisnik.objects.get(jib=jib)
+            print(f"✅ Korisnik: {korisnik.ime} (Plan: {korisnik.plan})")
+
+        except Korisnik.DoesNotExist:
+            print(f"❌ Korisnik sa JIB {jib} ne postoji")
+
+            all_jibs = Korisnik.objects.values_list("jib", "ime")
+            print(f"\n📋 Dostupni JIB-ovi:")
+            for db_jib, ime in all_jibs:
+                print(f"   - {db_jib} ({ime})")
+
+            return HttpResponse(f"User with JIB {jib} not found", status=404)
+
+        # ============================================
+        # PROVJERI PLAN
+        # ============================================
+        if korisnik.plan not in ["Professional", "Business", "Enterprise"]:
+            print(f"⚠️ Plan '{korisnik.plan}' ne podržava inbox")
+            return HttpResponse(
+                f"Plan '{korisnik.plan}' does not support inbox. Upgrade required.",
+                status=403,
+            )
+
+        # ============================================
+        # OBRADI PDF ATTACHMENTE
+        # ============================================
+        pdf_count = 0
+
+        if not attachments:
+            print("⚠️ Nema attachmenta")
+            return HttpResponse("No attachments found", status=400)
+
+        for attachment in attachments:
+            content_type = attachment.get("content_type", "")
+            filename = attachment.get("file_name", "izvod.pdf")
+
+            # Samo PDF-ovi
+            if content_type != "application/pdf" and not filename.lower().endswith(
+                ".pdf"
+            ):
+                print(f"⏭️ SKIP non-PDF: {filename}")
+                continue
+
+            print(f"\n📄 PDF: {filename}")
+
+            content_base64 = attachment.get("content")
+
+            if not content_base64:
+                print("⚠️ PDF content prazan")
+                continue
+
+            try:
+                pdf_bytes = base64.b64decode(content_base64)
+                print(f"📦 Size: {len(pdf_bytes)} bytes")
+            except Exception as e:
+                print(f"❌ Base64 decode error: {str(e)}")
+                continue
+
+            # DUPLIKAT PROVJERA
+            pdf_file = io.BytesIO(pdf_bytes)
+            is_duplicate, pdf_hash = EmailInbox.check_duplicate(pdf_file, korisnik)
+
+            if is_duplicate:
+                print(f"⏭️ SKIP - Duplikat (hash: {pdf_hash[:16]}...)")
+                continue
+
+            # Detektuj banku
+            banka = detect_bank_from_text(from_address, subject, filename)
+            print(f"🏦 Banka: {banka}")
+
+            # PARSUJ PDF
+            pdf_file = io.BytesIO(pdf_bytes)
+            from .utils import parse_bank_statement_pdf
+
+            transakcije = parse_bank_statement_pdf(pdf_file)
+
+            if not transakcije:
+                print("⚠️ Parser nije pronašao transakcije")
+                inbox = EmailInbox.objects.create(
+                    korisnik=korisnik,
+                    from_email=from_address,
+                    subject=subject,
+                    banka_naziv=banka,
+                    pdf_fajl=ContentFile(pdf_bytes, name=filename),
+                    pdf_hash=pdf_hash,
+                    transakcije_json=[],
+                    confidence=0,
+                    procesuirano=False,
+                )
+                print(f"⚠️ Inbox ID={inbox.id} (bez transakcija)")
+                pdf_count += 1
+                continue
+
+            print(f"✅ Parsirano {len(transakcije)} transakcija:")
+
+            transakcije_json = []
+            ukupno_prihodi = 0
+            ukupno_rashodi = 0
+
+            for idx, trans in enumerate(transakcije, 1):
+                tip = "prihod" if trans["iznos"] > 0 else "rashod"
+                transakcije_json.append(
+                    {
+                        "datum": trans["datum"].strftime("%Y-%m-%d"),
+                        "opis": trans["opis"],
+                        "iznos": float(trans["iznos"]),
+                        "tip": tip,
+                    }
+                )
+
+                if trans["iznos"] > 0:
+                    ukupno_prihodi += trans["iznos"]
+                else:
+                    ukupno_rashodi += abs(trans["iznos"])
+
+                print(
+                    f"  [{idx}] {tip.upper()}: {trans['iznos']:>10.2f} KM - {trans['opis'][:50]}"
+                )
+
+            neto = ukupno_prihodi - ukupno_rashodi
+            print(f"\n💰 UKUPNO:")
+            print(f"   Prihodi:  +{ukupno_prihodi:>10.2f} KM")
+            print(f"   Rashodi:  -{ukupno_rashodi:>10.2f} KM")
+            print(f"   {'='*30}")
+            print(f"   Neto:      {neto:>10.2f} KM")
+
+            inbox = EmailInbox.objects.create(
+                korisnik=korisnik,
+                from_email=from_address,
+                subject=subject,
+                banka_naziv=banka,
+                pdf_fajl=ContentFile(pdf_bytes, name=filename),
+                pdf_hash=pdf_hash,
+                transakcije_json=transakcije_json,
+                confidence=95,
+                procesuirano=False,
+            )
+
+            print(f"\n✅ Inbox ID={inbox.id} za {korisnik.ime}")
+            pdf_count += 1
+
+        if pdf_count == 0:
+            print("\n⚠️ Nijedan PDF nije obrađen")
+            return HttpResponse("No valid PDFs processed", status=400)
+
+        print(f"\n🎉 Ukupno: {pdf_count} PDF fajlova")
+        print("=" * 70 + "\n")
+
+        return HttpResponse("OK", status=200)
+
+    except Exception as e:
+        print(f"❌ WEBHOOK ERROR: {str(e)}")
+        import traceback
+
+        traceback.print_exc()
+        return HttpResponse("Server error", status=500)
+
+
+def detect_bank_from_text(from_email, subject, filename=""):
+    """Detektuj banku iz email podataka"""
+    text = (from_email + " " + subject + " " + filename).lower()
+
+    banks = {
+        "nlb": "NLB Banka",
+        "atos": "Atos Banka",
+        "unicredit": "UniCredit",
+        "sparkasse": "Sparkasse",
+        "raiffeisen": "Raiffeisen",
+        "komercijalna": "Komercijalna Banka",
+        "intesa": "Intesa Sanpaolo",
+        "hypo": "Hypo Alpe Adria",
+    }
+
+    for keyword, name in banks.items():
+        if keyword in text:
+            return name
+
+    return "Nepoznata banka"
 
 
 # ============================================
@@ -1186,168 +1928,6 @@ def godisnji_izvjestaj_view(request, godina=None):
 
 
 # ============================================
-# BULK UPLOAD
-# ============================================
-
-
-@login_required
-@require_http_methods(["POST"])
-def bulk_upload_documents(request):
-    """Bulk upload PDF faktura sa OCR parsing"""
-    allowed, error = check_rate_limit(
-        request.user, "BULK_UPLOAD", limit=5, period_minutes=60
-    )
-    if not allowed:
-        return JsonResponse({"error": error}, status=429)
-
-    files = request.FILES.getlist("documents")
-    korisnik = request.user.korisnik
-
-    results = []
-
-    for file in files:
-        doc = UploadedDocument.objects.create(
-            korisnik=korisnik,
-            document_type="invoice",
-            file=file,
-            original_filename=file.name,
-        )
-
-        extracted = process_uploaded_pdf(doc)
-
-        results.append(
-            {"filename": file.name, "extracted": extracted, "doc_id": doc.id}
-        )
-
-        log_audit(
-            user=request.user,
-            model_name="UploadedDocument",
-            object_id=doc.id,
-            action="CREATE",
-            new_value={"filename": file.name},
-            request=request,
-        )
-
-    SystemLog.objects.create(
-        user=request.user,
-        action="BULK_UPLOAD",
-        status="success",
-        ip_address=get_client_ip(request),
-        details=f"Uploaded {len(files)} documents",
-    )
-
-    return JsonResponse({"success": True, "results": results})
-
-
-# ============================================
-# CALENDAR
-# ============================================
-
-
-@login_required
-def calendar_view(request):
-    """Kalendar view sa svim događajima"""
-    korisnik = request.user.korisnik
-
-    current_year = timezone.now().year
-    create_payment_deadline_events(korisnik, current_year)
-
-    events = korisnik.calendar_events.all()
-
-    calendar_events = []
-    for event in events:
-        calendar_events.append(
-            {
-                "id": event.id,
-                "title": event.title,
-                "start": event.start_date.isoformat(),
-                "end": (
-                    event.end_date.isoformat()
-                    if event.end_date
-                    else event.start_date.isoformat()
-                ),
-                "allDay": event.all_day,
-                "description": event.description,
-                "color": (
-                    "#3b82f6" if event.event_type == "payment_deadline" else "#8b5cf6"
-                ),
-            }
-        )
-
-    return render(
-        request, "core/calendar.html", {"events": json.dumps(calendar_events)}
-    )
-
-
-# ============================================
-# ANALYTICS
-# ============================================
-
-
-@login_required
-def analytics_view(request):
-    """Napredna analitika"""
-    korisnik = request.user.korisnik
-
-    from django.db.models import Sum, Count
-
-    top_klijenti = (
-        request.user.fakture.values("klijent")
-        .annotate(total=Sum("iznos"), count=Count("id"))
-        .order_by("-total")[:5]
-    )
-
-    from django.db.models.functions import ExtractMonth
-
-    mjesecna_statistika = (
-        korisnik.prihodi.annotate(month=ExtractMonth("mjesec"))
-        .values("month")
-        .annotate(avg_income=models.Avg("iznos"))
-        .order_by("month")
-    )
-
-    ukupno_ponuda = 100
-    placene_fakture = request.user.fakture.filter(status="Plaćena").count()
-    conversion_rate = (
-        (placene_fakture / ukupno_ponuda * 100) if ukupno_ponuda > 0 else 0
-    )
-
-    context = {
-        "top_klijenti": top_klijenti,
-        "mjesecna_statistika": list(mjesecna_statistika),
-        "conversion_rate": conversion_rate,
-        "predictions": korisnik.predictions.all()[:3],
-    }
-
-    return render(request, "core/analytics.html", context)
-
-
-# ============================================
-# CURRENCY CONVERTER
-# ============================================
-
-
-@login_required
-def currency_converter_view(request):
-    """Konverter valuta"""
-    currencies = Currency.objects.all()
-
-    result = None
-    if request.method == "POST":
-        amount = Decimal(request.POST.get("amount"))
-        from_curr = request.POST.get("from_currency")
-        to_curr = request.POST.get("to_currency")
-
-        result = convert_currency(amount, from_curr, to_curr)
-
-    return render(
-        request,
-        "core/currency_converter.html",
-        {"currencies": currencies, "result": result},
-    )
-
-
-# ============================================
 # EXPORT DATA
 # ============================================
 
@@ -1460,7 +2040,6 @@ def admin_panel(request):
         "log_search": log_search,
         "parametri": parametri,
         "banke": banke,
-        
     }
 
     return render(request, "core/admin_panel.html", context)
