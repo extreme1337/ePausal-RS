@@ -4,42 +4,53 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto py-8 px-6">
-    
+
     <!-- Header sa filterom -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-3xl font-bold text-gray-800">
-                <i class="fas fa-file-invoice-dollar text-blue-600 mr-3"></i>
-                Izvodi - Prihodi i Rashodi
-            </h2>
-            <a href="{% url 'izvodi_upload' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                <i class="fas fa-upload mr-2"></i>Upload Izvoda
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-file-invoice-dollar text-blue-600"></i>
+                    Izvodi - Prihodi i Rashodi
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    Ukupno: {{ ukupno_transakcija }} transakcija
+                </p>
+            </div>
+            <a href="{% url 'izvodi_upload' %}"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                <i class="fas fa-upload"></i>
+                <span>Upload Izvoda</span>
             </a>
         </div>
-        
+
         <!-- Filter -->
-        <form method="get" class="grid grid-cols-4 gap-4">
-            <div>
+        <form method="get" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Od datuma</label>
                 <input type="date" name="od" value="{{ od_datum }}"
-                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
-            <div>
+            <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Do datuma</label>
                 <input type="date" name="do" value="{{ do_datum }}"
-                       class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
             <div class="flex items-end gap-2">
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    <i class="fas fa-filter mr-2"></i>Filtriraj
+                <button type="submit"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <i class="fas fa-filter"></i>
+                    <span>Filtriraj</span>
                 </button>
-                <a href="{% url 'izvodi_pregled' %}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">
-                    <i class="fas fa-redo mr-2"></i>Reset
+                <a href="{% url 'izvodi_pregled' %}"
+                    class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 flex items-center gap-2">
+                    <i class="fas fa-redo"></i>
+                    <span>Reset</span>
                 </a>
             </div>
         </form>
     </div>
-    
+
     <!-- Statistika -->
     <div class="grid grid-cols-3 gap-6 mb-6">
         <div class="bg-white rounded-lg shadow-md p-6">
@@ -51,7 +62,7 @@
                 <i class="fas fa-arrow-up text-5xl text-green-200"></i>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -61,7 +72,7 @@
                 <i class="fas fa-arrow-down text-5xl text-red-200"></i>
             </div>
         </div>
-        
+
         <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex items-center justify-between">
                 <div>
@@ -74,7 +85,65 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Pagination Controls -->
+    <div class="mb-4 flex justify-between items-center p-3 bg-white rounded-lg shadow-md border border-gray-200">
+        <div class="text-sm text-gray-600">
+            {% if per_page == 'all' %}
+            Prikazano: <strong>{{ ukupno_transakcija }}</strong> od {{ ukupno_transakcija }}
+            {% else %}
+            Prikazano:
+            <strong>{{ page_obj.start_index }}</strong> - <strong>{{ page_obj.end_index }}</strong>
+            od <strong>{{ ukupno_transakcija }}</strong>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Per Page Selector -->
+            <div class="flex items-center gap-2">
+                <label class="text-sm text-gray-700">Prikaži:</label>
+                <select name="per_page" onchange="changePerPage(this.value)"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="20" {% if per_page == '20' %}selected{% endif %}>20</option>
+                    <option value="40" {% if per_page == '40' %}selected{% endif %}>40</option>
+                    <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+                    <option value="all" {% if per_page == 'all' %}selected{% endif %}>Sve</option>
+                </select>
+            </div>
+
+            <!-- Pagination Buttons -->
+            {% if paginator %}
+            <div class="flex items-center gap-1">
+                {% if page_obj.has_previous %}
+                <a href="?page=1{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                    <i class="fas fa-angle-double-left"></i>
+                </a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                    <i class="fas fa-angle-left"></i>
+                </a>
+                {% endif %}
+
+                <span class="px-4 py-1.5 text-sm font-medium">
+                    Stranica {{ page_obj.number }} od {{ paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ paginator.num_pages }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Tabela transakcija -->
     <div class="bg-white rounded-lg shadow-md overflow-hidden">
         <div class="overflow-x-auto">
@@ -100,26 +169,27 @@
                         </td>
                         <td class="px-4 py-3 text-center">
                             {% if trans.vrsta == 'prihod' %}
-                                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                                    <i class="fas fa-arrow-up mr-1"></i>Prihod
-                                </span>
+                            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
+                                <i class="fas fa-arrow-up mr-1"></i>Prihod
+                            </span>
                             {% else %}
-                                <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-                                    <i class="fas fa-arrow-down mr-1"></i>Rashod
-                                </span>
+                            <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
+                                <i class="fas fa-arrow-down mr-1"></i>Rashod
+                            </span>
                             {% endif %}
                         </td>
-                        <td class="px-4 py-3 text-right font-bold {% if trans.vrsta == 'prihod' %}text-green-600{% else %}text-red-600{% endif %}">
+                        <td
+                            class="px-4 py-3 text-right font-bold {% if trans.vrsta == 'prihod' %}text-green-600{% else %}text-red-600{% endif %}">
                             {% if trans.vrsta == 'prihod' %}
-                                +{{ trans.iznos|floatformat:2 }} KM
+                            +{{ trans.iznos|floatformat:2 }} KM
                             {% else %}
-                                -{{ trans.iznos|floatformat:2 }} KM
+                            -{{ trans.iznos|floatformat:2 }} KM
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-center">
                             {% if trans.izvod_fajl %}
-                            <a href="{{ trans.izvod_fajl.url }}" target="_blank" 
-                               class="text-blue-600 hover:text-blue-800">
+                            <a href="{{ trans.izvod_fajl.url }}" target="_blank"
+                                class="text-red-600 hover:text-red-800 text-lg">
                                 <i class="fas fa-file-pdf"></i>
                             </a>
                             {% else %}
@@ -127,8 +197,9 @@
                             {% endif %}
                         </td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="obrisiTransakciju({{ trans.id }}, '{{ trans.opis|truncatewords:5|escapejs }}')"
-                                    class="text-red-600 hover:text-red-800 transition">
+                            <button
+                                onclick="obrisiTransakciju({{ trans.id }}, '{{ trans.opis|truncatewords:5|escapejs }}')"
+                                class="text-red-600 hover:text-red-800 transition">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -145,25 +216,72 @@
             </table>
         </div>
     </div>
+
+    <!-- Bottom Pagination -->
+    {% if paginator and paginator.num_pages > 1 %}
+    <div class="mt-4 flex justify-center">
+        <div class="flex items-center gap-1">
+            {% if page_obj.has_previous %}
+            <a href="?page=1{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+
+            <!-- Page Numbers -->
+            {% for num in paginator.page_range %}
+            {% if num == page_obj.number %}
+            <span class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold">{{ num }}</span>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <a
+                href="?page={{ num }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                {{ num }}
+                </a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    <i class="fas fa-angle-right"></i>
+                </a>
+                <a href="?page={{ paginator.num_pages }}{% if od_datum %}&od={{ od_datum }}{% endif %}{% if do_datum %}&do={{ do_datum }}{% endif %}&per_page={{ per_page }}"
+                    class="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">
+                    <i class="fas fa-angle-double-right"></i>
+                </a>
+                {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <script>
-function obrisiTransakciju(izvodId, opis) {
-    if (confirm(`🗑️ Da li ste sigurni da želite obrisati:\n\n"${opis}..."\n\nOva akcija se NE MOŽE poništiti!`)) {
-        // Kreiraj hidden formu za POST request
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/izvodi/${izvodId}/delete/`;
-        
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = 'csrfmiddlewaretoken';
-        csrf.value = '{{ csrf_token }}';
-        form.appendChild(csrf);
-        
-        document.body.appendChild(form);
-        form.submit();
+    function obrisiTransakciju(izvodId, opis) {
+        if (confirm(`🗑️ Da li ste sigurni da želite obrisati:\n\n"${opis}..."\n\nOva akcija se NE MOŽE poništiti!`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/izvodi/${izvodId}/delete/`;
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
     }
-}
+
+    function changePerPage(value) {
+        const url = new URL(window.location);
+        url.searchParams.set('per_page', value);
+        url.searchParams.delete('page'); // Reset na prvu stranicu
+        window.location = url;
+    }
 </script>
 {% endblock %}

@@ -5,17 +5,169 @@
 {% block content %}
 <div class="max-w-7xl mx-auto p-6">
     <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">
-                <i class="fas fa-file-invoice mr-2 text-blue-600"></i>
-                Fakture
-            </h2>
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-file-invoice text-blue-600"></i>
+                    Fakture
+                </h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    Ukupno: {{ ukupno }} faktura | Vrijednost: {{ ukupan_iznos }} KM
+                </p>
+            </div>
             <button onclick="toggleNewInvoice()"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                <i class="fas fa-plus mr-2"></i>Nova faktura
+                class="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                <i class="fas fa-plus"></i>
+                <span>Nova faktura</span>
             </button>
         </div>
 
+        <!-- Search & Filter Bar -->
+        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Search -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-search mr-1"></i>
+                        Pretraga
+                    </label>
+                    <input type="text" name="search" value="{{ search_query }}"
+                        placeholder="Broj fakture ili naziv primaoca..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-filter mr-1"></i>
+                        Status
+                    </label>
+                    <select name="status"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Svi statusi</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Valuta Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-money-bill mr-1"></i>
+                        Valuta
+                    </label>
+                    <select name="valuta"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Sve valute</option>
+                        {% for value, label in valuta_choices %}
+                        <option value="{{ value }}" {% if valuta_filter == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="md:col-span-4 flex gap-2">
+                    <button type="submit"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                        <i class="fas fa-search"></i>
+                        <span>Pretraži</span>
+                    </button>
+
+                    {% if search_query or status_filter or valuta_filter %}
+                    <a href="{% url 'fakture' %}"
+                        class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition flex items-center gap-2">
+                        <i class="fas fa-times"></i>
+                        <span>Resetuj</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+
+        <!-- Search Results Info -->
+        {% if search_query or status_filter or valuta_filter %}
+        <div class="mb-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+            <p class="text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-1"></i>
+                <strong>{{ ukupno }}</strong> rezultata pronađeno
+                {% if search_query %}
+                za "<strong>{{ search_query }}</strong>"
+                {% endif %}
+                {% if status_filter %}
+                <span class="mx-1">•</span> Status: <strong>{{ status_filter }}</strong>
+                {% endif %}
+                {% if valuta_filter %}
+                <span class="mx-1">•</span> Valuta: <strong>{{ valuta_filter }}</strong>
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Pagination Controls -->
+        <div class="mb-4 flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="text-sm text-gray-600">
+                {% if per_page == 'all' %}
+                Prikazano: <strong>{{ ukupno }}</strong> od {{ ukupno }}
+                {% else %}
+                Prikazano:
+                <strong>{{ page_obj.start_index }}</strong> - <strong>{{ page_obj.end_index }}</strong>
+                od <strong>{{ ukupno }}</strong>
+                {% endif %}
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Per Page Selector -->
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-700">Prikaži:</label>
+                    <select name="per_page" onchange="changePerPage(this.value)"
+                        class="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+                        <option value="20" {% if per_page == '20' %}selected{% endif %}>20</option>
+                        <option value="40" {% if per_page == '40' %}selected{% endif %}>40</option>
+                        <option value="100" {% if per_page == '100' %}selected{% endif %}>100</option>
+                        <option value="all" {% if per_page == 'all' %}selected{% endif %}>Sve</option>
+                    </select>
+                </div>
+
+                <!-- Pagination Buttons -->
+                {% if paginator %}
+                <div class="flex items-center gap-1">
+                    {% if page_obj.has_previous %}
+                    <a href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if valuta_filter %}&valuta={{ valuta_filter }}{% endif %}&per_page={{ per_page }}"
+                        class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                        <i class="fas fa-angle-double-left"></i>
+                    </a>
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if valuta_filter %}&valuta={{ valuta_filter }}{% endif %}&per_page={{ per_page }}"
+                        class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                        <i class="fas fa-angle-left"></i>
+                    </a>
+                    {% endif %}
+
+                    <span class="px-4 py-1.5 text-sm font-medium">
+                        Stranica {{ page_obj.number }} od {{ paginator.num_pages }}
+                    </span>
+
+                    {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if valuta_filter %}&valuta={{ valuta_filter }}{% endif %}&per_page={{ per_page }}"
+                        class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                        <i class="fas fa-angle-right"></i>
+                    </a>
+                    <a href="?page={{ paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if valuta_filter %}&valuta={{ valuta_filter }}{% endif %}&per_page={{ per_page }}"
+                        class="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-100 text-sm">
+                        <i class="fas fa-angle-double-right"></i>
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Nova Faktura Form -->
         <div id="newInvoiceForm" class="hidden mb-6 border-2 border-blue-200 rounded-lg bg-blue-50">
             <div class="bg-blue-600 text-white px-4 py-3 rounded-t-lg">
                 <h3 class="font-bold text-lg">Kreiranje nove fakture</h3>
@@ -173,7 +325,8 @@
                                 <tr>
                                     <td colspan="5" class="border border-gray-300 px-4 py-4 text-right">
                                         <div class="flex items-center justify-end gap-3">
-                                            <span id="totalLabel" class="font-bold text-lg text-gray-700">UKUPNA CIJENA U 
+                                            <span id="totalLabel" class="font-bold text-lg text-gray-700">UKUPNA CIJENA
+                                                U
                                                 BAM:</span>
                                             <select name="valuta" id="valuta"
                                                 class="border p-2 rounded bg-white font-bold text-blue-600 focus:ring-2 focus:ring-blue-500">
@@ -207,6 +360,19 @@
             </form>
         </div>
 
+        <!-- Fakture Lista -->
+        {% if fakture.count == 0 %}
+        <div class="text-center py-16 text-gray-500">
+            <i class="fas fa-file-invoice text-6xl mb-4 opacity-30"></i>
+            {% if search_query or status_filter or valuta_filter %}
+            <p class="text-lg">Nema rezultata za vašu pretragu</p>
+            <p class="text-sm mt-2">Pokušajte sa drugim uslovima pretrage</p>
+            {% else %}
+            <p class="text-lg">Nemate kreiranih faktura</p>
+            <p class="text-sm mt-2">Kliknite "Nova Faktura" da kreirate prvu</p>
+            {% endif %}
+        </div>
+        {% else %}
         <div class="overflow-x-auto">
             <table class="w-full border-collapse">
                 <thead class="bg-gray-100">
@@ -252,21 +418,15 @@
                         <td class="px-4 py-3 text-center">
                             <a href="{% url 'download_invoice' faktura.id %}" target="_blank"
                                 class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs transition">
-                                <i class="fas fa-download"></i> Preuzmi fakturu
+                                <i class="fas fa-download"></i> Preuzmi
                             </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="px-4 py-8 text-center text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-2 opacity-30"></i>
-                            <p>Nema kreiranih faktura</p>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -280,7 +440,7 @@
         if (!form.classList.contains('hidden')) {
             const today = new Date().toISOString().split('T')[0];
             document.querySelector('[name="datum_izdavanja"]').value = today;
-            izracunajUkupno(); // Inicijalni proračun
+            izracunajUkupno();
         }
     }
 
@@ -324,7 +484,6 @@
         `;
         tbody.appendChild(newRow);
 
-        // Listeneri za nove inpute
         newRow.querySelectorAll('.kolicina, .cijena').forEach(input => {
             input.addEventListener('input', () => izracunajStavku(newRow));
         });
@@ -368,7 +527,6 @@
             total += (kolicina * cijena);
         });
 
-        // Ažuriranje labela i sume
         document.getElementById('grandTotal').textContent = total.toFixed(2) + ' ' + valuta;
         document.getElementById('totalLabel').textContent = `UKUPNA CIJENA ${valuta}:`;
     }
@@ -396,12 +554,9 @@
             });
     }
 
-    // Inicijalizacija
     document.addEventListener('DOMContentLoaded', function () {
-        // Listener za promjenu valute
         document.getElementById('valuta').addEventListener('change', izracunajUkupno);
 
-        // Listeneri za prvu (default) stavku
         document.querySelectorAll('.kolicina, .cijena').forEach(input => {
             input.addEventListener('input', function () {
                 izracunajStavku(this.closest('tr'));
@@ -411,7 +566,6 @@
         izracunajUkupno();
     });
 
-    // Form submit
     document.getElementById('invoiceForm').addEventListener('submit', function (e) {
         const stavke = document.querySelectorAll('.stavka-row');
         if (stavke.length === 0) {
@@ -419,5 +573,12 @@
             alert('Morate dodati najmanje jednu stavku!');
         }
     });
+
+    function changePerPage(value) {
+    const url = new URL(window.location);
+    url.searchParams.set('per_page', value);
+    url.searchParams.delete('page'); // Reset na prvu stranicu
+    window.location = url;
+}
 </script>
 {% endblock %}

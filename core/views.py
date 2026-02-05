@@ -1458,7 +1458,9 @@ def update_invoice_status(request, faktura_id):
 
 @login_required
 def fakture_view(request):
-    """Lista faktura + kreiranje nove"""
+    """Lista faktura + kreiranje nove + search + paginacija"""
+
+    # POST - Kreiranje nove fakture
     if request.method == "POST":
         try:
             # Osnovni podaci
@@ -1491,7 +1493,6 @@ def fakture_view(request):
                 kolicina_str = request.POST.get(f"stavke[{i}][kolicina]")
                 cijena_str = request.POST.get(f"stavke[{i}][cijena]")
 
-                # Validacija - preskoči prazne stavke
                 if not kolicina_str or not cijena_str:
                     i += 1
                     continue
@@ -1507,23 +1508,83 @@ def fakture_view(request):
                 )
                 i += 1
 
-            # Izračunaj ukupno
             faktura.izracunaj_ukupno()
 
             messages.success(
                 request, f"Faktura {faktura.broj_fakture} je uspješno kreirana!"
             )
 
-            # Redirect na download
             return redirect("download_invoice", faktura_id=faktura.id)
 
         except Exception as e:
             messages.error(request, f"Greška: {str(e)}")
+            return redirect("fakture")
 
-    # GET - prikaži listu
+    # GET - Prikaz liste sa search, filter i paginacijom
     fakture = Faktura.objects.filter(user=request.user).order_by("-datum_izdavanja")
 
-    return render(request, "core/fakture.html", {"fakture": fakture})
+    # SEARCH LOGIKA
+    search_query = request.GET.get("search", "").strip()
+
+    if search_query:
+        fakture = fakture.filter(
+            Q(broj_fakture__icontains=search_query)
+            | Q(primalac_naziv__icontains=search_query)
+        )
+
+    # FILTER PO STATUSU
+    status_filter = request.GET.get("status", "")
+    if status_filter:
+        fakture = fakture.filter(status=status_filter)
+
+    # FILTER PO VALUTI
+    valuta_filter = request.GET.get("valuta", "")
+    if valuta_filter:
+        fakture = fakture.filter(valuta=valuta_filter)
+
+    # STATISTIKA (prije paginacije - ukupno sve)
+    ukupno = fakture.count()
+    ukupan_iznos = fakture.aggregate(total=Sum("ukupno_sa_pdv"))["total"] or Decimal(
+        "0"
+    )
+
+    # PAGINACIJA
+    per_page = request.GET.get("per_page", "20")  # Default 20
+
+    # Ako korisnik odabere "Sve"
+    if per_page == "all":
+        paginator = None
+        page_obj = None
+        fakture_page = fakture
+    else:
+        try:
+            per_page_int = int(per_page)
+            # Ograniči na 20, 40, 100
+            if per_page_int not in [20, 40, 100]:
+                per_page_int = 20
+        except:
+            per_page_int = 20
+
+        paginator = Paginator(fakture, per_page_int)
+        page_number = request.GET.get("page", 1)
+        page_obj = paginator.get_page(page_number)
+        fakture_page = page_obj
+
+    context = {
+        "fakture": fakture_page,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "search_query": search_query,
+        "status_filter": status_filter,
+        "valuta_filter": valuta_filter,
+        "per_page": per_page,
+        "ukupno": ukupno,
+        "ukupan_iznos": ukupan_iznos,
+        "status_choices": Faktura.STATUS_CHOICES,
+        "valuta_choices": Faktura.VALUTA_CHOICES,
+    }
+
+    return render(request, "core/fakture.html", context)
 
 
 @login_required
@@ -1778,12 +1839,14 @@ def izvod_delete(request, izvod_id):
 
 @login_required
 def izvodi_pregled(request):
-    """Pregled svih transakcija"""
+    """Pregled svih transakcija sa paginacijom"""
     od_datum = request.GET.get("od")
     do_datum = request.GET.get("do")
 
-    transakcije = Prihod.objects.filter(korisnik=request.user.korisnik).exclude(
-        datum=None
+    transakcije = (
+        Prihod.objects.filter(korisnik=request.user.korisnik)
+        .exclude(datum=None)
+        .order_by("-datum")
     )
 
     if od_datum:
@@ -1793,7 +1856,7 @@ def izvodi_pregled(request):
 
     from django.db.models import Sum
 
-    # SVI IZNOSI SU POZITIVNI U BAZI!
+    # STATISTIKA (prije paginacije - sve transakcije)
     ukupno_prihodi = (
         transakcije.filter(vrsta="prihod").aggregate(total=Sum("iznos"))["total"] or 0
     )
@@ -1804,14 +1867,41 @@ def izvodi_pregled(request):
     # Bilans = prihodi - rashodi
     bilans = ukupno_prihodi - ukupno_rashodi
 
+    # Ukupan broj transakcija
+    ukupno_transakcija = transakcije.count()
+
+    # PAGINACIJA
+    per_page = request.GET.get("per_page", "20")
+
+    if per_page == "all":
+        paginator = None
+        page_obj = None
+        transakcije_page = transakcije
+    else:
+        try:
+            per_page_int = int(per_page)
+            if per_page_int not in [20, 40, 100]:
+                per_page_int = 20
+        except:
+            per_page_int = 20
+
+        paginator = Paginator(transakcije, per_page_int)
+        page_number = request.GET.get("page", 1)
+        page_obj = paginator.get_page(page_number)
+        transakcije_page = page_obj
+
     return render(
         request,
         "core/izvodi_pregled.html",
         {
-            "transakcije": transakcije,
+            "transakcije": transakcije_page,
+            "page_obj": page_obj,
+            "paginator": paginator,
+            "per_page": per_page,
             "ukupno_prihodi": ukupno_prihodi,
             "ukupno_rashodi": ukupno_rashodi,
             "bilans": bilans,
+            "ukupno_transakcija": ukupno_transakcija,
             "od_datum": od_datum,
             "do_datum": do_datum,
         },
