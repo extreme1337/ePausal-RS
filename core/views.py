@@ -19,6 +19,7 @@ from .utils import (
     generate_invoice_doc,
     generate_bilans_csv,
     generate_income_predictions,
+    get_chart_data_prihodi_filtered,
     get_chart_data_prihodi,
     generate_payment_slip_png,
     check_rate_limit,
@@ -342,15 +343,22 @@ def cancel_subscription(request):
 
 @login_required
 def dashboard(request):
-    """Enhanced dashboard sa Chart.js i AI predikcijama"""
+    """Dashboard sa year filter - BEZ AI predikcija"""
     korisnik = request.user.korisnik
 
-    # Calculate subscription days left
+    # Year filter
+    godina_filter = request.GET.get("godina", "")
+    trenutna_godina = timezone.now().year
+
+    # Default je trenutna godina
+    if not godina_filter:
+        godina_filter = str(trenutna_godina)
+
+    # Subscription days left
     if korisnik.trial_end_date:
         days_left = (korisnik.trial_end_date - timezone.now().date()).days
         subscription_days_left = max(0, days_left)
     else:
-        # Auto-set trial_end_date if missing
         korisnik.trial_end_date = korisnik.registrovan + timedelta(days=30)
         korisnik.save()
         subscription_days_left = (korisnik.trial_end_date - timezone.now().date()).days
@@ -359,31 +367,49 @@ def dashboard(request):
     plan_prices = {"Starter": 15, "Professional": 29, "Business": 49, "Enterprise": 99}
     current_plan_price = plan_prices.get(korisnik.plan, 29)
 
-    # Statistike
-    prihodi = korisnik.prihodi.all()
-    ukupan_prihod = sum([p.iznos for p in prihodi])
-    porez = ukupan_prihod * Decimal(str(settings.STOPA_POREZA))
-    doprinosi = (
-        Decimal(str(settings.PROSJECNA_BRUTO_PLATA))
-        * Decimal(str(settings.STOPA_DOPRINOSA))
-        * len(prihodi)
-    )
-    neto = ukupan_prihod - porez - doprinosi
-
-    # Chart data
-    chart_data = get_chart_data_prihodi(korisnik)
-
-    # AI Predictions
-    predictions = generate_income_predictions(korisnik)
-
-    if predictions:
-        pred_labels = [p.mjesec for p in predictions]
-        pred_values = [float(p.predicted_income) for p in predictions]
-        pred_confidence = [float(p.confidence) for p in predictions]
+    # FILTRIRANE STATISTIKE
+    if godina_filter == "all":
+        prihodi = korisnik.prihodi.filter(vrsta="prihod")
+        rashodi = korisnik.prihodi.filter(vrsta="rashod")
+        chart_prihodi = korisnik.prihodi.all()
     else:
-        pred_labels = []
-        pred_values = []
-        pred_confidence = []
+        prihodi = korisnik.prihodi.filter(vrsta="prihod", datum__year=godina_filter)
+        rashodi = korisnik.prihodi.filter(vrsta="rashod", datum__year=godina_filter)
+        chart_prihodi = korisnik.prihodi.filter(datum__year=godina_filter)
+
+    # Izračunaj ukupno
+    from django.db.models import Sum
+
+    ukupan_prihod = prihodi.aggregate(total=Sum("iznos"))["total"] or Decimal("0")
+    ukupni_rashodi = rashodi.aggregate(total=Sum("iznos"))["total"] or Decimal("0")
+
+    # Sistemski parametri
+    parametri = SistemskiParametri.get_parametri()
+
+    # Porez prema tipu
+    if korisnik.tip_preduzetnika == "veliki":
+        if godina_filter == "all" or int(godina_filter) <= trenutna_godina:
+            porez = ukupan_prihod * (
+                parametri.porez_veliki_preduzetnik / Decimal("100")
+            )
+        else:
+            porez = Decimal("0")
+    else:
+        porez = ukupan_prihod * (parametri.porez_mali_preduzetnik / Decimal("100"))
+
+    # Neto
+    neto = ukupan_prihod - ukupni_rashodi - porez
+
+    chart_data = get_chart_data_prihodi_filtered(chart_prihodi)
+
+    # Dostupne godine
+    sve_godine = korisnik.prihodi.exclude(datum=None).dates(
+        "datum", "year", order="DESC"
+    )
+    dostupne_godine = [d.year for d in sve_godine]
+
+    # Counts
+    inbox_count = korisnik.inbox_poruke.filter(procesuirano=False).count()
 
     context = {
         "korisnik": korisnik,
@@ -391,18 +417,18 @@ def dashboard(request):
         "current_plan_price": current_plan_price,
         "stats": {
             "ukupno": ukupan_prihod,
+            "rashodi": ukupni_rashodi,
             "porez": porez,
-            "doprinosi": doprinosi,
             "neto": neto,
         },
         "chart_data": json.dumps(chart_data),
-        "predictions": predictions,
-        "pred_labels": json.dumps(pred_labels),
-        "pred_values": json.dumps(pred_values),
-        "pred_confidence": json.dumps(pred_confidence),
-        # "inbox_count": korisnik.inbox.filter(potvrdjeno=False).count(),
+        "inbox_count": inbox_count,
         "fakture_count": request.user.fakture.count(),
         "uplatnice_count": korisnik.uplatnice.count(),
+        "godina_filter": godina_filter,
+        "dostupne_godine": dostupne_godine,
+        "trenutna_godina": trenutna_godina,
+        "tip_preduzetnika": korisnik.tip_preduzetnika,
     }
 
     return render(request, "core/dashboard.html", context)
@@ -1612,17 +1638,83 @@ def download_invoice(request, faktura_id):
 
 @login_required
 def uplatnice_view(request):
-    """Prikaz i kreiranje uplatnica"""
+    """Kreiranje uplatnica - fleksibilni sistem"""
     korisnik = request.user.korisnik
+    parametri = SistemskiParametri.get_parametri()
 
     if request.method == "POST":
+        vrsta_uplate = request.POST.get("vrsta_uplate")
+        banka_id = request.POST.get("banka_id", "")
+        primalac_tip = request.POST.get("primalac_tip", "PURS")
+
+        # === ODREDI RAČUN I PRIMAOCA ===
+        if vrsta_uplate == "custom":
+            # Custom - korisnik unosi sve
+            racun_primaoca = request.POST.get("racun_primaoca_custom", "").replace(
+                "-", ""
+            )
+            primalac_naziv = request.POST.get("primalac_naziv_custom", "")
+            primalac_adresa = request.POST.get("primalac_adresa_custom", "")
+            primalac_grad = request.POST.get("primalac_grad_custom", "")
+            primalac_tip = "CUSTOM"
+        else:
+            # Doprinosi ili Porez
+            primalac_adresa = "Vuka Karadžića 4"
+            primalac_grad = "78000 Banja Luka"
+
+            if banka_id == "custom_racun":
+                # Korisnik unio vlastiti račun
+                racun_primaoca = request.POST.get("racun_custom", "").replace("-", "")
+                primalac_naziv = "PORESKA UPRAVA REPUBLIKE SRPSKE"
+            elif banka_id:
+                # Odabrana banka iz liste
+                try:
+                    banka = Banka.objects.get(id=banka_id)
+                    if vrsta_uplate == "doprinosi":
+                        racun_primaoca = banka.racun_doprinosi
+                        primalac_naziv = banka.primalac_doprinosi
+                    else:  # porez
+                        racun_primaoca = banka.racun_porez
+                        primalac_naziv = banka.primalac_porez
+                except Banka.DoesNotExist:
+                    messages.error(request, "❌ Banka nije pronađena")
+                    return redirect("uplatnice")
+            else:
+                messages.error(request, "❌ Odaberite banku!")
+                return redirect("uplatnice")
+
+        # === ODREDI IZNOS ===
+        iznos_str = request.POST.get("iznos", "0")
+        try:
+            iznos = Decimal(iznos_str)
+        except:
+            messages.error(request, "❌ Neispravan iznos!")
+            return redirect("uplatnice")
+
+        if iznos <= 0:
+            messages.error(request, "❌ Iznos mora biti veći od 0!")
+            return redirect("uplatnice")
+
+        # === KREIRAJ UPLATNICU ===
         uplatnica = Uplatnica.objects.create(
             korisnik=korisnik,
-            datum=timezone.now().date(),
-            primalac=request.POST.get("primalac"),
-            iznos=Decimal(request.POST.get("iznos")),
-            svrha=request.POST.get("svrha", "Porez na dohodak"),
-            poziv_na_broj=request.POST.get("poziv", ""),
+            vrsta_uplate=vrsta_uplate,
+            datum=request.POST.get("datum"),
+            primalac_tip=primalac_tip,
+            primalac_naziv=primalac_naziv,
+            primalac_adresa=primalac_adresa,
+            primalac_grad=primalac_grad,
+            racun_posiljaoca=korisnik.racun.replace("-", ""),
+            racun_primaoca=racun_primaoca.replace("-", ""),
+            iznos=iznos,
+            svrha=request.POST.get("svrha", ""),
+            poresko_broj=request.POST.get("poresko_broj", korisnik.jib),
+            vrsta_placanja=request.POST.get("vrsta_placanja", "0"),
+            vrsta_prihoda=request.POST.get("vrsta_prihoda", ""),
+            opstina=request.POST.get("opstina", "014"),
+            budzetska_organizacija=request.POST.get("budzetska_organizacija", "9999999"),
+            sifra_placanja=request.POST.get("sifra_placanja", "43"),
+            poziv_na_broj=request.POST.get("poziv_na_broj", "0000000000"),
         )
 
         # Generiši PNG uplatnicu
@@ -1630,26 +1722,48 @@ def uplatnice_view(request):
         uplatnica.fajl = png_file
         uplatnica.save()
 
-        log_audit(
-            user=request.user,
-            model_name="Uplatnica",
-            object_id=uplatnica.id,
-            action="CREATE",
-            new_value={"primalac": uplatnica.primalac, "iznos": str(uplatnica.iznos)},
-            request=request,
-        )
+        messages.success(request, "✅ Uplatnica kreirana!")
+        return redirect("download_payment", uplatnica_id=uplatnica.id)
 
-        SystemLog.objects.create(
-            user=request.user,
-            action="GENERATE_PAYMENT",
-            status="success",
-            ip_address=get_client_ip(request),
-        )
-
-        return JsonResponse({"success": True, "file_url": uplatnica.fajl.url})
-
+    # === GET - prikaz forme ===
     uplatnice = korisnik.uplatnice.all()
-    return render(request, "core/uplatnice.html", {"uplatnice": uplatnice})
+    banke = Banka.objects.filter(aktivna=True)
+
+    context = {
+        "uplatnice": uplatnice,
+        "banke": banke,
+        "korisnik": korisnik,
+        "parametri": parametri,
+        "opstina_choices": Uplatnica.OPSTINA_CHOICES,
+        "vrsta_placanja_choices": Uplatnica.VRSTA_PLACANJA_CHOICES,
+    }
+
+    return render(request, "core/uplatnice.html", context)
+
+
+@login_required
+def api_prihodi_za_mjesec(request):
+    """API: Vrati ukupne prihode korisnika za dati mjesec (za obračun poreza)"""
+    mjesec = request.GET.get("mjesec", "")  # Format: "2026-02"
+
+    if not mjesec:
+        return JsonResponse({"ukupan_prihod": 0, "error": "Nedostaje mjesec"})
+
+    korisnik = request.user.korisnik
+
+    # Saberi sve prihode (samo tip 'prihod', ne rashode) za taj mjesec
+    ukupan_prihod = (
+        Prihod.objects.filter(
+            korisnik=korisnik, mjesec=mjesec, vrsta="prihod"
+        ).aggregate(total=Sum("iznos"))["total"]
+    ) or Decimal("0")
+
+    return JsonResponse(
+        {
+            "ukupan_prihod": float(ukupan_prihod),
+            "mjesec": mjesec,
+        }
+    )
 
 
 @login_required
@@ -1837,26 +1951,71 @@ def izvod_delete(request, izvod_id):
     return redirect("izvodi_pregled")
 
 
+# core/views.py - ZAMIJENI CIJELI izvodi_pregled()
+
+from django.core.paginator import Paginator
+from datetime import date, timedelta
+
+
 @login_required
 def izvodi_pregled(request):
-    """Pregled svih transakcija sa paginacijom"""
+    """Pregled transakcija - DEFAULT: trenutna godina"""
+
+    # Parametri iz GET requesta
     od_datum = request.GET.get("od")
     do_datum = request.GET.get("do")
 
+    # Sve transakcije korisnika
     transakcije = (
         Prihod.objects.filter(korisnik=request.user.korisnik)
         .exclude(datum=None)
         .order_by("-datum")
     )
 
-    if od_datum:
-        transakcije = transakcije.filter(datum__gte=od_datum)
-    if do_datum:
-        transakcije = transakcije.filter(datum__lte=do_datum)
+    # IZRAČUNAJ DATUME ZA QUICK FILTERE (NA POČETKU!)
+    today = date.today()
 
+    # Trenutna godina
+    ova_godina_start = today.replace(month=1, day=1)
+
+    # Trenutni mjesec
+    trenutni_mjesec_start = today.replace(day=1)
+    if today.month == 12:
+        trenutni_mjesec_end = today.replace(
+            year=today.year + 1, month=1, day=1
+        ) - timedelta(days=1)
+    else:
+        trenutni_mjesec_end = today.replace(month=today.month + 1, day=1) - timedelta(
+            days=1
+        )
+
+    # Prošli mjesec
+    if today.month == 1:
+        prosli_mjesec_start = today.replace(year=today.year - 1, month=12, day=1)
+        prosli_mjesec_end = today.replace(day=1) - timedelta(days=1)
+    else:
+        prosli_mjesec_start = today.replace(month=today.month - 1, day=1)
+        prosli_mjesec_end = today.replace(day=1) - timedelta(days=1)
+
+    # Prošla godina
+    prosla_godina_start = today.replace(year=today.year - 1, month=1, day=1)
+    prosla_godina_end = today.replace(year=today.year - 1, month=12, day=31)
+
+    # DEFAULT FILTER - Trenutna godina
+    if not od_datum and not do_datum:
+        transakcije = transakcije.filter(datum__gte=ova_godina_start)
+        od_datum = ova_godina_start.strftime("%Y-%m-%d")
+        do_datum = None
+    else:
+        # Manual filter
+        if od_datum:
+            transakcije = transakcije.filter(datum__gte=od_datum)
+        if do_datum:
+            transakcije = transakcije.filter(datum__lte=do_datum)
+
+    # STATISTIKA
     from django.db.models import Sum
 
-    # STATISTIKA (prije paginacije - sve transakcije)
     ukupno_prihodi = (
         transakcije.filter(vrsta="prihod").aggregate(total=Sum("iznos"))["total"] or 0
     )
@@ -1864,10 +2023,7 @@ def izvodi_pregled(request):
         transakcije.filter(vrsta="rashod").aggregate(total=Sum("iznos"))["total"] or 0
     )
 
-    # Bilans = prihodi - rashodi
     bilans = ukupno_prihodi - ukupno_rashodi
-
-    # Ukupan broj transakcija
     ukupno_transakcija = transakcije.count()
 
     # PAGINACIJA
@@ -1890,6 +2046,7 @@ def izvodi_pregled(request):
         page_obj = paginator.get_page(page_number)
         transakcije_page = page_obj
 
+    # RETURN
     return render(
         request,
         "core/izvodi_pregled.html",
@@ -1904,6 +2061,14 @@ def izvodi_pregled(request):
             "ukupno_transakcija": ukupno_transakcija,
             "od_datum": od_datum,
             "do_datum": do_datum,
+            # Quick filter datumi
+            "trenutni_mjesec_start": trenutni_mjesec_start.strftime("%Y-%m-%d"),
+            "trenutni_mjesec_end": trenutni_mjesec_end.strftime("%Y-%m-%d"),
+            "prosli_mjesec_start": prosli_mjesec_start.strftime("%Y-%m-%d"),
+            "prosli_mjesec_end": prosli_mjesec_end.strftime("%Y-%m-%d"),
+            "ova_godina_start": ova_godina_start.strftime("%Y-%m-%d"),
+            "prosla_godina_start": prosla_godina_start.strftime("%Y-%m-%d"),
+            "prosla_godina_end": prosla_godina_end.strftime("%Y-%m-%d"),
         },
     )
 
@@ -2170,6 +2335,39 @@ def admin_panel(request):
 
 
 @login_required
+def support_user_reply(request, pitanje_id):
+    """Korisnik odgovara na svoj support ticket"""
+    if request.method == "POST":
+        pitanje = get_object_or_404(
+            SupportPitanje, id=pitanje_id, korisnik=request.user.korisnik
+        )
+
+        odgovor_text = request.POST.get("odgovor")
+
+        if not odgovor_text:
+            messages.error(request, "❌ Odgovor ne može biti prazan")
+            return redirect("support_detail", pitanje_id=pitanje_id)
+
+        # Kreiraj odgovor KORISNIKA
+        SupportOdgovor.objects.create(
+            pitanje=pitanje,
+            autor=request.user,
+            je_admin_odgovor=False,  # Korisnik odgovor
+            odgovor=odgovor_text,
+        )
+
+        # Vrati status na "u_obradi" ako je bio "riješeno"
+        if pitanje.status == "rijeseno":
+            pitanje.status = "u_obradi"
+            pitanje.save()
+
+        messages.success(request, "✅ Odgovor poslat!")
+        return redirect("support_detail", pitanje_id=pitanje_id)
+
+    return redirect("support")
+
+
+@login_required
 def admin_support_update(request, pitanje_id):
     """Admin ažurira support pitanje (status, prioritet, assignee)"""
     if not request.user.is_staff:
@@ -2219,12 +2417,15 @@ def admin_support_reply(request, pitanje_id):
             messages.error(request, "❌ Odgovor ne može biti prazan")
             return redirect(f"/admin-panel/?tab=support")
 
-        # Kreiraj odgovor
+        # Kreiraj odgovor ADMINA
         SupportOdgovor.objects.create(
-            pitanje=pitanje, admin=request.user, odgovor=odgovor_text
+            pitanje=pitanje,
+            autor=request.user,
+            je_admin_odgovor=True,  # Admin odgovor
+            odgovor=odgovor_text,
         )
 
-        # Automatski promijeni status u "u_obradi" ako je bio "novo"
+        # Automatski promijeni status
         if pitanje.status == "novo":
             pitanje.status = "u_obradi"
 
@@ -2244,7 +2445,7 @@ def admin_support_reply(request, pitanje_id):
         )
 
         messages.success(request, f"✅ Odgovor poslat za Ticket #{pitanje.id}")
-        return redirect(f"/admin-panel/?tab=support")
+        return redirect(f"/admin-panel/support/{pitanje.id}/")
 
     return redirect("/admin-panel/?tab=support")
 

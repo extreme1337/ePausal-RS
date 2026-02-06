@@ -14,7 +14,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
-    "8046d20b562a.ngrok-free.app",
+    "c94b9ea44571.ngrok-free.app",
 ]
 
 # Application definition
@@ -186,7 +186,7 @@ SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 CSRF_TRUSTED_ORIGINS = [
-    "https://8046d20b562a.ngrok-free.app",
+    "https://c94b9ea44571.ngrok-free.app",
 ]
 # Ovo ostavi True:
 SECURE_BROWSER_XSS_FILTER = True

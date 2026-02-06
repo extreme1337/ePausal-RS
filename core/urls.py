@@ -124,6 +124,11 @@ urlpatterns = [
     path("support/", views.support_view, name="support"),
     path("support/<int:pitanje_id>/", views.support_detail, name="support_detail"),
     path(
+        "support/<int:pitanje_id>/reply/",
+        views.support_user_reply,
+        name="support_user_reply",
+    ),  # ← DODAJ
+    path(
         "support/<int:pitanje_id>/delete/", views.support_delete, name="support_delete"
     ),
     # SUPPORT - Admin
@@ -142,4 +147,6 @@ urlpatterns = [
         views.admin_support_reply,
         name="admin_support_reply",
     ),
+
+    path('api/prihodi-za-mjesec/', views.api_prihodi_za_mjesec, name='api_prihodi_za_mjesec'),
 ]

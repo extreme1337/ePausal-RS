@@ -4,102 +4,649 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto p-6">
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-xl font-bold text-gray-800">
-                <i class="fas fa-money-check mr-2 text-green-600"></i>
-                Uplatnice
-            </h2>
-            <button onclick="toggleNewPayment()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                <i class="fas fa-plus mr-2"></i>Nova uplatnica
-            </button>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- LEFT: Forma -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                    <i class="fas fa-money-check-alt text-blue-600"></i>
+                    Kreiraj Uplatnicu
+                </h2>
+
+                <form method="post" id="uplatnicaForm">
+                    {% csrf_token %}
+
+                    <!-- Vrsta Uplate -->
+                    <div class="mb-6 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            <i class="fas fa-list mr-2"></i>Vrsta uplate *
+                        </label>
+                        <select name="vrsta_uplate" id="vrsta_uplate" required
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="doprinosi">Lični doprinosi (712199)</option>
+                            <option value="porez">Porez na dohodak (713111)</option>
+                            <option value="custom">Custom uplatnica</option>
+                        </select>
+                    </div>
+
+                    <!-- ============================== -->
+                    <!-- SEKCIJA: DOPRINOSI / POREZ     -->
+                    <!-- ============================== -->
+                    <div id="predefinisanaSekcija">
+
+                        <!-- Banka -->
+                        <div class="mb-6" id="bankaField">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-university mr-2"></i>Odaberi banku *
+                            </label>
+                            <select name="banka_id" id="banka_id"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Odaberi banku --</option>
+                                {% for banka in banke %}
+                                <option value="{{ banka.id }}" data-racun-doprinosi="{{ banka.racun_doprinosi }}"
+                                    data-racun-porez="{{ banka.racun_porez }}"
+                                    data-primalac-doprinosi="{{ banka.primalac_doprinosi }}"
+                                    data-primalac-porez="{{ banka.primalac_porez }}">
+                                    {{ banka.naziv }}
+                                </option>
+                                {% endfor %}
+                                <option value="custom_racun">Vlastiti račun...</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1" id="racunInfo">
+                                Odaberite banku ili unesite vlastiti račun
+                            </p>
+                        </div>
+
+                        <!-- Custom Račun (ako odabere "Vlastiti račun") -->
+                        <div id="customRacunField"
+                            class="hidden mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Broj računa primaoca *
+                            </label>
+                            <input type="text" name="racun_custom" id="racun_custom" placeholder="5620080000000000"
+                                maxlength="30" class="w-full px-3 py-2 border rounded-lg font-mono">
+                            <p class="text-xs text-gray-500 mt-1">
+                                Unesite vlastiti broj računa za ovu uplatu
+                            </p>
+                        </div>
+
+                        <!-- Mjesec za obračun poreza (samo za porez) -->
+                        <div id="mjesecPorezaField"
+                            class="hidden mb-6 bg-yellow-50 border-l-4 border-yellow-500 rounded-r-lg p-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-calendar mr-2"></i>Mjesec za obračun poreza *
+                            </label>
+                            <input type="month" name="mjesec_za_porez" id="mjesec_za_porez"
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-yellow-500">
+                            <p class="text-xs text-gray-600 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Porez 2% na ukupne prihode za odabrani mjesec
+                            </p>
+                            <div id="porezObracunInfo" class="hidden mt-3 p-3 bg-white rounded-lg border">
+                                <p class="text-sm text-gray-600">Prihodi za odabrani mjesec:</p>
+                                <p class="text-2xl font-bold text-blue-600" id="prihodZaMjesec">0.00 KM</p>
+                                <p class="text-sm text-gray-600 mt-1">Porez (2%):</p>
+                                <p class="text-2xl font-bold text-orange-600" id="porezZaMjesec">0.00 KM</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================== -->
+                    <!-- SEKCIJA: CUSTOM UPLATNICA      -->
+                    <!-- ============================== -->
+                    <div id="customSekcija" class="hidden">
+                        <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <h4 class="font-semibold text-gray-700 mb-3">
+                                <i class="fas fa-user mr-2"></i>Podaci primaoca:
+                            </h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Naziv primaoca *</label>
+                                    <input type="text" name="primalac_naziv_custom" id="primalac_naziv_custom"
+                                        class="w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Adresa primaoca</label>
+                                    <input type="text" name="primalac_adresa_custom" id="primalac_adresa_custom"
+                                        class="w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Grad primaoca</label>
+                                    <input type="text" name="primalac_grad_custom" id="primalac_grad_custom"
+                                        class="w-full px-3 py-2 border rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-1">Račun primaoca *</label>
+                                    <input type="text" name="racun_primaoca_custom" id="racun_primaoca_custom"
+                                        placeholder="5620080000000000" maxlength="30"
+                                        class="w-full px-3 py-2 border rounded-lg font-mono">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ============================== -->
+                    <!-- ZAJEDNIČKA POLJA               -->
+                    <!-- ============================== -->
+
+                    <!-- Datum -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Datum uplate *</label>
+                        <input type="date" name="datum" id="datumUplate" required
+                            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <!-- Iznos -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                            <i class="fas fa-money-bill-wave mr-2"></i>Iznos
+                        </label>
+
+                        <div id="iznosToggleWrapper" class="flex items-center gap-4 mb-3">
+                            <label class="flex items-center">
+                                <input type="radio" name="iznos_auto" id="iznosAutoRadio" value="da" checked>
+                                <span class="ml-2 text-sm">Automatski obračunaj</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="iznos_auto" id="iznosManualRadio" value="ne">
+                                <span class="ml-2 text-sm">Ručni unos</span>
+                            </label>
+                        </div>
+
+                        <!-- Auto iznos prikaz -->
+                        <div id="iznosAutoDisplay" class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <p class="text-sm text-gray-600 mb-2">Obračunati iznos:</p>
+                            <p class="text-3xl font-bold text-green-600">
+                                <span id="iznosAutoValue">0.00</span> KM
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1" id="iznosAutoNote">
+                                Mjesečni doprinosi iz sistemskih parametara
+                            </p>
+                        </div>
+
+                        <!-- Manual iznos input -->
+                        <div id="iznosManualInput" class="hidden">
+                            <input type="number" name="iznos_manual" id="iznos_manual" step="0.01" min="0.01"
+                                placeholder="Unesi iznos..."
+                                class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-lg font-semibold">
+                        </div>
+
+                        <!-- Hidden polje za finalni iznos koji se šalje na backend -->
+                        <input type="hidden" name="iznos" id="iznos_final">
+                    </div>
+
+                    <!-- Svrha -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Svrha uplate *</label>
+                        <input type="text" name="svrha" id="svrha" required placeholder="Auto - generiše se"
+                            class="w-full px-4 py-2 border rounded-lg bg-gray-50">
+                        <p class="text-xs text-gray-500 mt-1" id="svrhaNote">
+                            Automatski se popunjava na osnovu vrste uplate
+                        </p>
+                    </div>
+
+                    <!-- Hidden polja za primalac (popunjava JS) -->
+                    <input type="hidden" name="primalac_tip" id="primalac_tip" value="PURS">
+
+                    <!-- Napredna polja (collapsible) -->
+                    <details class="mb-6">
+                        <summary class="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800 mb-3">
+                            <i class="fas fa-cog mr-2"></i>Napredna podešavanja
+                        </summary>
+
+                        <div class="mt-4 p-4 bg-gray-50 rounded-lg space-y-4">
+                            <!-- Poresko broj -->
+                            <div>
+                                <label class="block text-sm text-gray-700 mb-2">Poresko broj (JIB)</label>
+                                <input type="text" name="poresko_broj" value="{{ korisnik.jib }}" maxlength="13"
+                                    class="w-full px-3 py-2 border rounded-lg font-mono">
+                            </div>
+
+                            <!-- Grid za kratka polja -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Vrsta plaćanja</label>
+                                    <select name="vrsta_placanja" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        {% for value, label in vrsta_placanja_choices %}
+                                        <option value="{{ value }}" {% if value == '0' %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Vrsta prihoda</label>
+                                    <input type="text" name="vrsta_prihoda" id="vrsta_prihoda" placeholder="Auto"
+                                        class="w-full px-3 py-2 border rounded-lg font-mono bg-gray-50">
+                                </div>
+                            </div>
+
+                            <!-- Grid za opština i org -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Opština</label>
+                                    <select name="opstina" class="w-full px-3 py-2 border rounded-lg text-sm">
+                                        {% for value, label in opstina_choices %}
+                                        <option value="{{ value }}" {% if value == '014' %}selected{% endif %}>
+                                            {{ label }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Budžetska org.</label>
+                                    <input type="text" name="budzetska_organizacija" id="budzetska_organizacija"
+                                        value="9999999" maxlength="10"
+                                        class="w-full px-3 py-2 border rounded-lg font-mono bg-gray-50">
+                                </div>
+                            </div>
+
+                            <!-- Grid za šifru i poziv -->
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Šifra plaćanja</label>
+                                    <input type="text" name="sifra_placanja" value="43" maxlength="2"
+                                        class="w-full px-3 py-2 border rounded-lg text-center">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm text-gray-700 mb-2">Poziv na broj</label>
+                                    <input type="text" name="poziv_na_broj" value="0000000000" maxlength="20"
+                                        class="w-full px-3 py-2 border rounded-lg font-mono">
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Submit -->
+                    <button type="submit"
+                        class="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2">
+                        <i class="fas fa-check"></i>
+                        <span>Kreiraj Uplatnicu</span>
+                    </button>
+                </form>
+            </div>
         </div>
 
-        <!-- New Payment Form -->
-        <div id="newPaymentForm" class="hidden mb-6 p-4 border-2 border-blue-200 rounded-lg bg-blue-50">
-            <h3 class="font-bold text-gray-800 mb-3">Kreiranje nove uplatnice</h3>
-            <form method="POST" id="paymentForm" class="grid md:grid-cols-2 gap-4">
-                {% csrf_token %}
-                <select name="primalac" required class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="PURS">Poreska uprava RS (PURS)</option>
-                    <option value="FZO RS">Fond zdravstva RS (FZO)</option>
-                </select>
-                <input type="number" step="0.01" name="iznos" placeholder="Iznos (KM)" required
-                       class="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                <input type="text" name="svrha" placeholder="Svrha uplate" value="Porez na dohodak"
-                       class="px-4 py-2 border rounded-lg md:col-span-2 focus:ring-2 focus:ring-blue-500">
-                <input type="text" name="poziv" placeholder="Poziv na broj (opciono)"
-                       class="px-4 py-2 border rounded-lg md:col-span-2 focus:ring-2 focus:ring-blue-500">
-                <div class="md:col-span-2 flex gap-2">
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                        <i class="fas fa-download mr-2"></i>Generiši i preuzmi
-                    </button>
-                    <button type="button" onclick="toggleNewPayment()" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
-                        Otkaži
-                    </button>
+        <!-- RIGHT: Lista postojećih -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-lg shadow-md p-6 sticky top-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">
+                    <i class="fas fa-history text-gray-600"></i>
+                    Prethodne uplatnice
+                </h3>
+
+                {% if uplatnice.count == 0 %}
+                <div class="text-center py-8 text-gray-500">
+                    <i class="fas fa-inbox text-4xl mb-2 opacity-30"></i>
+                    <p class="text-sm">Nema kreiranih uplatnica</p>
                 </div>
-            </form>
-        </div>
-
-        <!-- Payments Table -->
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Datum</th>
-                        <th class="px-4 py-2 text-left">Primalac</th>
-                        <th class="px-4 py-2 text-left">Svrha</th>
-                        <th class="px-4 py-2 text-right">Iznos</th>
-                        <th class="px-4 py-2 text-center">Akcije</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for uplatnica in uplatnice %}
-                    <tr class="border-t hover:bg-gray-50 transition">
-                        <td class="px-4 py-3 text-sm text-gray-600">{{ uplatnica.datum|date:"d.m.Y" }}</td>
-                        <td class="px-4 py-3 font-semibold">{{ uplatnica.primalac }}</td>
-                        <td class="px-4 py-3 text-sm">{{ uplatnica.svrha }}</td>
-                        <td class="px-4 py-3 text-right font-semibold">{{ uplatnica.iznos }} KM</td>
-                        <td class="px-4 py-3 text-center">
-                            <a href="{% url 'download_payment' uplatnica.id %}"
-                               class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm transition">
-                                <i class="fas fa-download"></i>Preuzmi
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                            <i class="fas fa-inbox text-4xl mb-2 opacity-30"></i>
-                            <p>Nema kreiranih uplatnica</p>
-                        </td>
-                    </tr>
+                {% else %}
+                <div class="space-y-3 max-h-96 overflow-y-auto">
+                    {% for u in uplatnice %}
+                    <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="font-medium text-sm text-gray-800">{{ u.primalac_naziv|truncatewords:3 }}</p>
+                                <p class="text-xs text-gray-500">{{ u.datum|date:"d.m.Y" }}</p>
+                                <p class="text-xs text-gray-400">{{ u.get_vrsta_uplate_display }}</p>
+                            </div>
+                            <span class="text-sm font-bold text-blue-600">{{ u.iznos }} KM</span>
+                        </div>
+                        <a href="{% url 'download_payment' u.id %}" target="_blank"
+                            class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                            <i class="fas fa-download"></i>
+                            <span>Preuzmi</span>
+                        </a>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-function toggleNewPayment() {
-    document.getElementById('newPaymentForm').classList.toggle('hidden');
-}
+    // ============================================
+    // SISTEMSKI PODACI (iz Django konteksta)
+    // ============================================
+    const DOPRINOSI_IZNOS = parseFloat('{{ parametri.mjesecni_doprinosi }}') || 0;
+    const TIP_PREDUZETNIKA = '{{ korisnik.tip_preduzetnika }}';
+    const KORISNIK_JIB = '{{ korisnik.jib }}';
 
-document.getElementById('paymentForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    
-    const response = await fetch('{% url "uplatnice" %}', {
-        method: 'POST',
-        body: formData
-    });
-    
-    const data = await response.json();
-    if (data.success) {
-        window.location.href = data.file_url;
-        setTimeout(() => window.location.reload(), 1000);
+    // ============================================
+    // ELEMENTI
+    // ============================================
+    const elVrstaUplate = document.getElementById('vrsta_uplate');
+    const elBankaId = document.getElementById('banka_id');
+    const elCustomRacunField = document.getElementById('customRacunField');
+    const elRacunCustom = document.getElementById('racun_custom');
+    const elPredefinisanaSekcija = document.getElementById('predefinisanaSekcija');
+    const elCustomSekcija = document.getElementById('customSekcija');
+    const elMjesecPorezaField = document.getElementById('mjesecPorezaField');
+    const elMjesecZaPorez = document.getElementById('mjesec_za_porez');
+    const elPorezObracunInfo = document.getElementById('porezObracunInfo');
+    const elPrihodZaMjesec = document.getElementById('prihodZaMjesec');
+    const elPorezZaMjesec = document.getElementById('porezZaMjesec');
+    const elIznosAutoDisplay = document.getElementById('iznosAutoDisplay');
+    const elIznosManualInput = document.getElementById('iznosManualInput');
+    const elIznosAutoValue = document.getElementById('iznosAutoValue');
+    const elIznosAutoNote = document.getElementById('iznosAutoNote');
+    const elIznosManual = document.getElementById('iznos_manual');
+    const elIznosFinal = document.getElementById('iznos_final');
+    const elIznosToggleWrapper = document.getElementById('iznosToggleWrapper');
+    const elIznosAutoRadio = document.getElementById('iznosAutoRadio');
+    const elIznosManualRadio = document.getElementById('iznosManualRadio');
+    const elSvrha = document.getElementById('svrha');
+    const elSvrhaNote = document.getElementById('svrhaNote');
+    const elVrstaPrihoda = document.getElementById('vrsta_prihoda');
+    const elBudzetska = document.getElementById('budzetska_organizacija');
+    const elPrimalacTip = document.getElementById('primalac_tip');
+    const elRacunInfo = document.getElementById('racunInfo');
+
+    // Cache za prihode po mjesecu (AJAX)
+    let prihodiCache = {};
+
+    // ============================================
+    // GLAVNA FUNKCIJA: Promjena vrste uplate
+    // ============================================
+    function onVrstaUplateChange() {
+        const vrsta = elVrstaUplate.value;
+
+        if (vrsta === 'custom') {
+            // CUSTOM - korisnik unosi sve ručno
+            elPredefinisanaSekcija.classList.add('hidden');
+            elCustomSekcija.classList.remove('hidden');
+            elMjesecPorezaField.classList.add('hidden');
+
+            // Iznos: samo ručni
+            elIznosToggleWrapper.classList.add('hidden');
+            elIznosAutoDisplay.classList.add('hidden');
+            elIznosManualInput.classList.remove('hidden');
+            elIznosManualRadio.checked = true;
+            elIznosManual.required = true;
+
+            // Svrha: korisnik unosi
+            elSvrha.readOnly = false;
+            elSvrha.value = '';
+            elSvrha.placeholder = 'Unesi svrhu uplate...';
+            elSvrha.classList.remove('bg-gray-50');
+            elSvrhaNote.textContent = 'Unesite svrhu uplate ručno';
+
+            // Vrsta prihoda: korisnik unosi
+            elVrstaPrihoda.readOnly = false;
+            elVrstaPrihoda.value = '';
+            elVrstaPrihoda.classList.remove('bg-gray-50');
+            elBudzetska.readOnly = false;
+            elBudzetska.value = '9999999';
+            elBudzetska.classList.remove('bg-gray-50');
+
+            elPrimalacTip.value = 'CUSTOM';
+
+        } else if (vrsta === 'doprinosi') {
+            // DOPRINOSI - banka + auto iznos
+            elPredefinisanaSekcija.classList.remove('hidden');
+            elCustomSekcija.classList.add('hidden');
+            elMjesecPorezaField.classList.add('hidden');
+
+            // Iznos: auto = doprinosi
+            elIznosToggleWrapper.classList.remove('hidden');
+            elIznosAutoRadio.checked = true;
+            onIznosToggle();
+            elIznosAutoValue.textContent = DOPRINOSI_IZNOS.toFixed(2);
+            elIznosAutoNote.textContent = 'Mjesečni doprinosi iz sistemskih parametara';
+
+            // Svrha: auto
+            const now = new Date();
+            const mj = String(now.getMonth() + 1).padStart(2, '0');
+            const god = now.getFullYear();
+            elSvrha.value = `Lični doprinosi za ${mj}/${god}`;
+            elSvrha.readOnly = true;
+            elSvrha.classList.add('bg-gray-50');
+            elSvrhaNote.textContent = 'Automatski se popunjava na osnovu vrste uplate';
+
+            // Vrsta prihoda
+            elVrstaPrihoda.value = '712199';
+            elVrstaPrihoda.readOnly = true;
+            elVrstaPrihoda.classList.add('bg-gray-50');
+            elBudzetska.value = '9999999';
+            elBudzetska.readOnly = true;
+            elBudzetska.classList.add('bg-gray-50');
+
+            elPrimalacTip.value = 'PURS';
+
+            onBankaChange();
+
+        } else if (vrsta === 'porez') {
+            // POREZ - banka + mjesec + izračun 2%
+            elPredefinisanaSekcija.classList.remove('hidden');
+            elCustomSekcija.classList.add('hidden');
+            elMjesecPorezaField.classList.remove('hidden');
+
+            // Postavi default mjesec
+            const now = new Date();
+            const mj = String(now.getMonth() + 1).padStart(2, '0');
+            const god = now.getFullYear();
+            elMjesecZaPorez.value = `${god}-${mj}`;
+
+            // Iznos: auto = obračun poreza
+            elIznosToggleWrapper.classList.remove('hidden');
+            elIznosAutoRadio.checked = true;
+            onIznosToggle();
+            elIznosAutoValue.textContent = '...';
+            elIznosAutoNote.textContent = 'Odaberite mjesec za obračun poreza';
+
+            // Svrha
+            elSvrha.value = `Porez na prihod za ${god}`;
+            elSvrha.readOnly = true;
+            elSvrha.classList.add('bg-gray-50');
+            elSvrhaNote.textContent = 'Automatski se popunjava na osnovu vrste uplate';
+
+            // Vrsta prihoda
+            elVrstaPrihoda.value = '713111';
+            elVrstaPrihoda.readOnly = true;
+            elVrstaPrihoda.classList.add('bg-gray-50');
+            elBudzetska.value = '9999999';
+            elBudzetska.readOnly = true;
+            elBudzetska.classList.add('bg-gray-50');
+
+            elPrimalacTip.value = 'PURS';
+
+            onBankaChange();
+            onMjesecPorezaChange();
+        }
     }
-});
+
+    // ============================================
+    // Promjena banke
+    // ============================================
+    function onBankaChange() {
+        const vrsta = elVrstaUplate.value;
+        const selectedValue = elBankaId.value;
+
+        if (selectedValue === 'custom_racun') {
+            // Korisnik unosi vlastiti račun
+            elCustomRacunField.classList.remove('hidden');
+            elRacunCustom.required = true;
+            elRacunInfo.innerHTML = '<i class="fas fa-edit text-yellow-600 mr-1"></i>Unesite vlastiti broj računa';
+        } else {
+            elCustomRacunField.classList.add('hidden');
+            elRacunCustom.required = false;
+
+            if (selectedValue && selectedValue !== '') {
+                const opt = elBankaId.options[elBankaId.selectedIndex];
+
+                if (vrsta === 'doprinosi') {
+                    const racun = opt.dataset.racunDoprinosi;
+                    elRacunInfo.innerHTML = `<i class="fas fa-check text-green-600 mr-1"></i>Račun za doprinose: <strong class="font-mono">${racun}</strong>`;
+                } else if (vrsta === 'porez') {
+                    const racun = opt.dataset.racunPorez;
+                    elRacunInfo.innerHTML = `<i class="fas fa-check text-green-600 mr-1"></i>Račun za porez: <strong class="font-mono">${racun}</strong>`;
+                }
+            } else {
+                elRacunInfo.innerHTML = 'Odaberite banku ili unesite vlastiti račun';
+            }
+        }
+    }
+
+    // ============================================
+    // Toggle iznos auto/manual
+    // ============================================
+    function onIznosToggle() {
+        const isAuto = elIznosAutoRadio.checked;
+
+        if (isAuto) {
+            elIznosAutoDisplay.classList.remove('hidden');
+            elIznosManualInput.classList.add('hidden');
+            elIznosManual.required = false;
+        } else {
+            elIznosAutoDisplay.classList.add('hidden');
+            elIznosManualInput.classList.remove('hidden');
+            elIznosManual.required = true;
+        }
+    }
+
+    // ============================================
+    // Promjena mjeseca za porez - AJAX za prihode
+    // ============================================
+    function onMjesecPorezaChange() {
+        const mjesecValue = elMjesecZaPorez.value; // format: "2026-02"
+        if (!mjesecValue) return;
+
+        const [god, mj] = mjesecValue.split('-');
+
+        // Ažuriraj svrhu
+        elSvrha.value = `Porez na prihod za ${mj}/${god}`;
+
+        // Provjeri cache
+        if (prihodiCache[mjesecValue] !== undefined) {
+            updatePorezIznos(prihodiCache[mjesecValue], mjesecValue);
+            return;
+        }
+
+        // AJAX poziv za prihode tog mjeseca
+        elIznosAutoValue.textContent = '...';
+        elIznosAutoNote.textContent = 'Učitavam prihode...';
+
+        fetch(`/api/prihodi-za-mjesec/?mjesec=${mjesecValue}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                const ukupanPrihod = parseFloat(data.ukupan_prihod) || 0;
+                prihodiCache[mjesecValue] = ukupanPrihod;
+                updatePorezIznos(ukupanPrihod, mjesecValue);
+            })
+            .catch(err => {
+                console.error('Greška pri učitavanju prihoda:', err);
+                elIznosAutoValue.textContent = '0.00';
+                elIznosAutoNote.textContent = 'Greška pri učitavanju - unesite ručno';
+                elPorezObracunInfo.classList.add('hidden');
+            });
+    }
+
+    function updatePorezIznos(ukupanPrihod, mjesecValue) {
+        const porez = ukupanPrihod * 0.02;
+
+        elIznosAutoValue.textContent = porez.toFixed(2);
+        elIznosAutoNote.textContent = `Porez 2% na prihode od ${ukupanPrihod.toFixed(2)} KM`;
+
+        // Prikaži detalje
+        elPorezObracunInfo.classList.remove('hidden');
+        elPrihodZaMjesec.textContent = ukupanPrihod.toFixed(2) + ' KM';
+        elPorezZaMjesec.textContent = porez.toFixed(2) + ' KM';
+
+        if (ukupanPrihod === 0) {
+            elIznosAutoNote.textContent = `Nema evidentiranih prihoda za ${mjesecValue}`;
+            elPorezObracunInfo.classList.remove('hidden');
+        }
+    }
+
+    // ============================================
+    // FORM SUBMIT - postavi finalni iznos
+    // ============================================
+    document.getElementById('uplatnicaForm').addEventListener('submit', function (e) {
+        const vrsta = elVrstaUplate.value;
+        const isAuto = elIznosAutoRadio.checked;
+
+        let finalIznos;
+
+        if (vrsta === 'custom' || !isAuto) {
+            // Ručni unos
+            finalIznos = elIznosManual.value;
+            if (!finalIznos || parseFloat(finalIznos) <= 0) {
+                e.preventDefault();
+                alert('Molimo unesite iznos!');
+                return;
+            }
+        } else {
+            // Auto iznos
+            finalIznos = elIznosAutoValue.textContent;
+            if (!finalIznos || finalIznos === '...' || parseFloat(finalIznos) <= 0) {
+                e.preventDefault();
+                alert('Iznos nije izračunat. Provjerite podatke.');
+                return;
+            }
+        }
+
+        elIznosFinal.value = finalIznos;
+
+        // Validacija banke za doprinose/porez
+        if (vrsta !== 'custom') {
+            const bankaVal = elBankaId.value;
+            if (!bankaVal || bankaVal === '') {
+                e.preventDefault();
+                alert('Molimo odaberite banku!');
+                return;
+            }
+            if (bankaVal === 'custom_racun' && !elRacunCustom.value.trim()) {
+                e.preventDefault();
+                alert('Molimo unesite broj računa!');
+                return;
+            }
+        }
+
+        // Validacija custom polja
+        if (vrsta === 'custom') {
+            const naziv = document.getElementById('primalac_naziv_custom').value.trim();
+            const racun = document.getElementById('racun_primaoca_custom').value.trim();
+            if (!naziv) {
+                e.preventDefault();
+                alert('Unesite naziv primaoca!');
+                return;
+            }
+            if (!racun) {
+                e.preventDefault();
+                alert('Unesite račun primaoca!');
+                return;
+            }
+        }
+    });
+
+    // ============================================
+    // EVENT LISTENERS
+    // ============================================
+    elVrstaUplate.addEventListener('change', onVrstaUplateChange);
+    elBankaId.addEventListener('change', onBankaChange);
+    elMjesecZaPorez.addEventListener('change', onMjesecPorezaChange);
+    elIznosAutoRadio.addEventListener('change', onIznosToggle);
+    elIznosManualRadio.addEventListener('change', onIznosToggle);
+
+    // ============================================
+    // INIT na DOMContentLoaded
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function () {
+        // Postavi današnji datum
+        const danas = new Date().toISOString().split('T')[0];
+        document.getElementById('datumUplate').value = danas;
+
+        // Pokreni inicijalnu logiku
+        onVrstaUplateChange();
+    });
 </script>
 {% endblock %}

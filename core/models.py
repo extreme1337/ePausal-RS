@@ -299,28 +299,284 @@ class StavkaFakture(models.Model):
 
 
 class Uplatnica(models.Model):
+    """Uplatnica za plaćanje poreza/doprinosa"""
+
+    VRSTA_UPLATE_CHOICES = [
+        ("doprinosi", "Lični doprinosi"),
+        ("porez", "Porez na dohodak"),
+        ("custom", "Custom uplatnica"),
+    ]
+
     PRIMALAC_CHOICES = [
         ("PURS", "Poreska uprava RS"),
-        ("FZO RS", "Fond zdravstva RS"),
+        ("FZO", "Fond zdravstva RS"),
+        ("CUSTOM", "Drugi primalac (custom)"),
+    ]
+
+    OPSTINA_CHOICES = [
+        ("001", "001 - Sarajevo - Centar"),
+        ("002", "002 - Banja Luka"),
+        ("003", "003 - Bihać"),
+        ("004", "004 - Banovići"),
+        ("005", "005 - Bijeljina"),
+        ("007", "007 - Bileća"),
+        ("008", "008 - Gradiška"),
+        ("009", "009 - Bosanska Krupa"),
+        ("010", "010 - Bosansko Grahovo"),
+        ("011", "011 - Bosanski Petrovac"),
+        ("012", "012 - Bratunac"),
+        ("013", "013 - Breza"),
+        ("014", "014 - Brod"),
+        ("015", "015 - Bugojno"),
+        ("016", "016 - Busovača"),
+        ("017", "017 - Gračanica"),
+        ("018", "018 - Kozarska Dubica"),
+        ("019", "019 - Šamac"),
+        ("020", "020 - Cazin"),
+        ("021", "021 - Čapljina"),
+        ("022", "022 - Čelinac"),
+        ("023", "023 - Čitluk"),
+        ("024", "024 - Grude"),
+        ("025", "025 - Derventa"),
+        ("026", "026 - Domaljevac-Šamac"),
+        ("027", "027 - Donji Vakuf"),
+        ("028", "028 - Doboj"),
+        ("029", "029 - Drvar"),
+        ("030", "030 - Tomislavgrad"),
+        ("031", "031 - Foča-Ustikolina"),
+        ("032", "032 - Fojnica"),
+        ("033", "033 - Goražde"),
+        ("034", "034 - Gacko"),
+        ("035", "035 - Sarajevo - Hadžići"),
+        ("036", "036 - Glamoč"),
+        ("037", "037 - Gornji Vakuf-Usk."),
+        ("038", "038 - Sarajevo - Ilidža"),
+        ("039", "039 - Ilijaš"),
+        ("040", "040 - Jablanica"),
+        ("041", "041 - Jajce"),
+        ("042", "042 - Kakanj"),
+        ("043", "043 - Kalesija"),
+        ("044", "044 - Istočno Novo Sarajevo"),
+        ("045", "045 - Kalinovik"),
+        ("046", "046 - Kiseljak"),
+        ("047", "047 - Kladanj"),
+        ("048", "048 - Ključ"),
+        ("049", "049 - Konjic"),
+        ("050", "050 - Ribnik"),
+        ("051", "051 - Kotor Varoš"),
+        ("052", "052 - Kreševo"),
+        ("053", "053 - Kupres (FBiH)"),
+        ("054", "054 - Novo Goražde"),
+        ("056", "056 - Laktaši"),
+        ("058", "058 - Livno"),
+        ("059", "059 - Lopare"),
+        ("060", "060 - Lukavac"),
+        ("061", "061 - Ljubinje"),
+        ("062", "062 - Ljubuški"),
+        ("063", "063 - Maglaj"),
+        ("064", "064 - Modriča"),
+        ("065", "065 - Mrkonjić Grad"),
+        ("066", "066 - Neum"),
+        ("067", "067 - Nevesinje"),
+        ("070", "070 - Novi Travnik"),
+        ("071", "071 - Odžak"),
+        ("072", "072 - Olovo"),
+        ("073", "073 - Orašje"),
+        ("074", "074 - Prijedor"),
+        ("075", "075 - Prnjavor"),
+        ("076", "076 - Ravno"),
+        ("077", "077 - Rogatica"),
+        ("078", "078 - Rudo"),
+        ("079", "079 - Sanski Most"),
+        ("080", "080 - Oštra Luka"),
+        ("081", "081 - Sarajevo - Novi Grad"),
+        ("082", "082 - Sarajevo - Novo Sar."),
+        ("083", "083 - Sarajevo - Stari Grad"),
+        ("085", "085 - Pale (RS)"),
+        ("086", "086 - Posušje"),
+        ("088", "088 - Kneževo"),
+        ("089", "089 - Sokolac"),
+        ("090", "090 - Srbac"),
+        ("091", "091 - Srebrenica"),
+        ("092", "092 - Srebrenik"),
+        ("093", "093 - Stolac"),
+        ("094", "094 - Čajniče"),
+        ("095", "095 - Šekovići"),
+        ("096", "096 - Šipovo"),
+        ("097", "097 - Han Pijesak"),
+        ("099", "099 - Brčko Distrikt"),
+        ("100", "100 - Široki Brijeg"),
+        ("101", "101 - Živinice"),
+        ("102", "102 - Tešanj"),
+        ("103", "103 - Teslić"),
+        ("104", "104 - Sarajevo - Trnovo (F)"),
+        ("105", "105 - Žepče"),
+        ("106", "106 - Travnik"),
+        ("107", "107 - Trebinje"),
+        ("108", "108 - Tuzla"),
+        ("109", "109 - Ugljevik"),
+        ("110", "110 - Vareš"),
+        ("111", "111 - Zenica"),
+        ("112", "112 - Velika Kladuša"),
+        ("113", "113 - Visoko"),
+        ("114", "114 - Višegrad"),
+        ("115", "115 - Sarajevo - Vogošća"),
+        ("116", "116 - Vitez"),
+        ("117", "117 - Zavidovići"),
+        ("118", "118 - Zvornik"),
+        ("119", "119 - Bužim"),
+        ("120", "120 - Berkovići"),
+        ("121", "121 - Kostajnica"),
+        ("122", "122 - Sarajevo - Trnovo (RS)"),
+        ("123", "123 - Istočni Stari Grad"),
+        ("124", "124 - Istočni Drvar"),
+        ("158", "158 - Istočni Mostar"),
+        ("159", "159 - Jezero"),
+        ("160", "160 - Krupa na Uni"),
+        ("161", "161 - Kupres (RS)"),
+        ("163", "163 - Milići"),
+        ("164", "164 - Petrovac (RS)"),
+        ("165", "165 - Osmaci"),
+        ("166", "166 - Pelagićevo"),
+        ("167", "167 - Vukosavlje"),
+        ("180", "180 - Mostar"),
+        ("181", "181 - Čelić"),
+        ("182", "182 - Doboj Istok"),
+        ("183", "183 - Doboj Jug"),
+        ("184", "184 - Dobretići"),
+        ("185", "185 - Sapna"),
+        ("186", "186 - Teočak"),
+        ("187", "187 - Usora"),
+        ("188", "188 - Pale-Prača"),
+        ("199", "199 - Stanari"),
+        ("241", "241 - Foča (RS)"),
+    ]
+
+    VRSTA_PLACANJA_CHOICES = [
+        ("0", "0 - Redovna/Tekuća uplata"),
+        ("1", "1 - Uplata po rješenju"),
+        ("2", "2 - Uplata po rješenju o prinudnoj naplati"),
+        ("3", "3 - Uplata po rješenju o odgođenom plaćanju"),
+        ("4", "4 - Uplata po rješenju iz inspekcijskog nadzora"),
+        ("5", "5 - Uplata po rješenju o prekršaju"),
+        ("6", "6 - Uplata po rješenju suda"),
+        ("7", "7 - Uplata zaostalih obaveza"),
+        ("8", "8 - Dobrovoljna uplata"),
+        ("9", "9 - Ostale uplate"),
     ]
 
     korisnik = models.ForeignKey(
         Korisnik, on_delete=models.CASCADE, related_name="uplatnice"
     )
-    datum = models.DateField()
-    primalac = models.CharField(max_length=20, choices=PRIMALAC_CHOICES)
-    iznos = models.DecimalField(max_digits=10, decimal_places=2)
-    svrha = models.CharField(max_length=200)
-    poziv_na_broj = models.CharField(max_length=50, blank=True)
-    fajl = models.FileField(upload_to="payments/", blank=True, null=True)
+
+    # Tip uplate
+    vrsta_uplate = models.CharField(
+        max_length=20,
+        choices=VRSTA_UPLATE_CHOICES,
+        default="doprinosi",
+        verbose_name="Vrsta uplate",
+    )
+
+    datum = models.DateField(verbose_name="Datum uplate")
+
+    # Primalac
+    primalac_tip = models.CharField(
+        max_length=20,
+        choices=PRIMALAC_CHOICES,
+        default="PURS",
+        verbose_name="Tip primaoca",
+    )
+
+    primalac_naziv = models.CharField(max_length=200, verbose_name="Naziv primaoca")
+
+    primalac_adresa = models.CharField(
+        max_length=200, blank=True, verbose_name="Adresa primaoca"
+    )
+
+    primalac_grad = models.CharField(
+        max_length=100, blank=True, verbose_name="Grad primaoca"
+    )
+
+    # Računi
+    racun_posiljaoca = models.CharField(max_length=30, verbose_name="Račun pošiljaoca")
+
+    racun_primaoca = models.CharField(max_length=30, verbose_name="Račun primaoca")
+
+    # Iznos
+    iznos = models.DecimalField(
+        max_digits=10, decimal_places=2, verbose_name="Iznos (KM)"
+    )
+
+    # Svrha
+    svrha = models.CharField(max_length=200, verbose_name="Svrha uplate")
+
+    # Poreska polja
+    poresko_broj = models.CharField(
+        max_length=13, blank=True, verbose_name="Poresko broj (JIB)"
+    )
+
+    vrsta_placanja = models.CharField(
+        max_length=2,
+        choices=VRSTA_PLACANJA_CHOICES,
+        default="0",
+        verbose_name="Vrsta plaćanja",
+    )
+
+    vrsta_prihoda = models.CharField(
+        max_length=10,
+        blank=True,
+        verbose_name="Vrsta prihoda",
+        help_text="712199 - doprinosi, 713111 - porez",
+    )
+
+    opstina = models.CharField(
+        max_length=3,  # Promijenjeno sa 2 na 3 (241 ima 3 cifre)
+        choices=OPSTINA_CHOICES,
+        default="014",  # '014' umjesto '14'
+        verbose_name="Opština",
+    )
+
+    budzetska_organizacija = models.CharField(
+        max_length=10, default="9999999", verbose_name="Budžetska organizacija"
+    )
+
+    sifra_placanja = models.CharField(
+        max_length=2, default="43", verbose_name="Šifra plaćanja"
+    )
+
+    poziv_na_broj = models.CharField(
+        max_length=20, default="0000000000", verbose_name="Poziv na broj"
+    )
+
+    # Fajl
+    fajl = models.FileField(upload_to="uplatnice/", blank=True, null=True)
+
     datum_kreiranja = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.datum} - {self.primalac} - {self.iznos} KM"
+        return f"{self.datum} - {self.primalac_naziv} - {self.iznos} KM"
 
     class Meta:
         ordering = ["-datum"]
         verbose_name_plural = "Uplatnice"
+
+    def get_vrsta_prihoda_auto(self):
+        """Automatski odredi vrstu prihoda"""
+        if self.vrsta_uplate == "doprinosi":
+            return "712199"
+        elif self.vrsta_uplate == "porez":
+            return "713111"
+        else:
+            return self.vrsta_prihoda or ""
+
+    def get_budzetska_org_auto(self):
+        """Automatski odredi budžetsku org"""
+        if self.primalac_tip == "PURS":
+            return "9999999"
+        elif self.primalac_tip == "FZO":
+            return "9999999"
+        else:
+            return self.budzetska_organizacija or "9999999"
 
 
 class Bilans(models.Model):
@@ -921,7 +1177,7 @@ class SupportSlika(models.Model):
 
 
 class SupportOdgovor(models.Model):
-    """Admin odgovori na support pitanja"""
+    """Odgovori na support pitanja - thread konverzacija"""
 
     pitanje = models.ForeignKey(
         SupportPitanje,
@@ -930,9 +1186,13 @@ class SupportOdgovor(models.Model):
         verbose_name="Pitanje",
     )
 
-    admin = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, verbose_name="Admin"
+    # Ko je odgovorio
+    autor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, verbose_name="Autor"
     )
+
+    # Da li je admin ili korisnik
+    je_admin_odgovor = models.BooleanField(default=False, verbose_name="Admin odgovor")
 
     odgovor = models.TextField(verbose_name="Odgovor")
     datum_odgovora = models.DateTimeField(auto_now_add=True, verbose_name="Datum")
@@ -943,4 +1203,5 @@ class SupportOdgovor(models.Model):
         verbose_name_plural = "Support Odgovori"
 
     def __str__(self):
-        return f"Odgovor od {self.admin} na {self.pitanje.naslov}"
+        tip = "Admin" if self.je_admin_odgovor else "Korisnik"
+        return f"{tip} odgovor na {self.pitanje.naslov}"

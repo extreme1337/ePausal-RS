@@ -11,7 +11,7 @@
             <span>Nazad na Support</span>
         </a>
     </div>
-    
+
     <div class="bg-white rounded-lg shadow-md p-6">
         <!-- Header -->
         <div class="flex justify-between items-start mb-6">
@@ -24,7 +24,7 @@
                     {{ pitanje.datum_kreiranja|date:"d.m.Y H:i" }}
                 </p>
             </div>
-            
+
             <!-- Status -->
             {% if pitanje.status == 'novo' %}
             <span class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
@@ -44,7 +44,7 @@
             </span>
             {% endif %}
         </div>
-        
+
         <!-- Tvoja Poruka -->
         <div class="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4 mb-6">
             <div class="flex items-start gap-3 mb-2">
@@ -57,7 +57,7 @@
                 </div>
             </div>
             <p class="text-gray-700 whitespace-pre-wrap ml-13">{{ pitanje.poruka }}</p>
-            
+
             <!-- Slike -->
             {% if pitanje.slike.count > 0 %}
             <div class="mt-4 ml-13">
@@ -65,58 +65,110 @@
                 <div class="grid grid-cols-3 gap-2">
                     {% for slika in pitanje.slike.all %}
                     <a href="{{ slika.slika.url }}" target="_blank">
-                        <img src="{{ slika.slika.url }}" 
-                             class="w-full h-32 object-cover rounded border-2 border-blue-200 hover:border-blue-500 transition">
+                        <img src="{{ slika.slika.url }}"
+                            class="w-full h-32 object-cover rounded border-2 border-blue-200 hover:border-blue-500 transition">
                     </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
         </div>
-        
-        <!-- Odgovori Admin-a -->
+
+        <!-- Konverzacija Thread -->
         <div class="space-y-4 mb-6">
             <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <i class="fas fa-comments text-green-600"></i>
-                Odgovori ({{ pitanje.odgovori.count }})
+                Konverzacija ({{ pitanje.odgovori.count }})
             </h3>
-            
+
             {% if pitanje.odgovori.count == 0 %}
             <div class="text-center py-8 bg-gray-50 rounded-lg text-gray-500">
                 <i class="fas fa-clock text-4xl mb-2 opacity-30"></i>
                 <p>Čeka se odgovor od tima podrške...</p>
             </div>
             {% else %}
+            <!-- Thread odgovora -->
             {% for odgovor in pitanje.odgovori.all %}
-            <div class="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
-                <div class="flex items-start gap-3 mb-2">
-                    <div class="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                        <i class="fas fa-headset"></i>
-                    </div>
-                    <div>
-                        <p class="font-semibold text-gray-800">
-                            Support Tim
-                            {% if odgovor.admin %}
-                            <span class="text-sm text-gray-500">({{ odgovor.admin.username }})</span>
-                            {% endif %}
-                        </p>
-                        <p class="text-xs text-gray-500">{{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}</p>
+            {% if odgovor.je_admin_odgovor %}
+            <!-- Admin odgovor -->
+            <div class="flex items-start gap-3">
+                <div
+                    class="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="font-semibold text-gray-800">
+                                    Support Tim
+                                    {% if odgovor.autor %}
+                                    <span class="text-sm text-gray-500">({{ odgovor.autor.username }})</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-xs text-gray-500">{{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 whitespace-pre-wrap">{{ odgovor.odgovor }}</p>
                     </div>
                 </div>
-                <p class="text-gray-700 whitespace-pre-wrap ml-13">{{ odgovor.odgovor }}</p>
             </div>
+            {% else %}
+            <!-- Korisnik odgovor -->
+            <div class="flex items-start gap-3 flex-row-reverse">
+                <div
+                    class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                    {{ request.user.username|first|upper }}
+                </div>
+                <div class="flex-1">
+                    <div class="bg-blue-50 border-r-4 border-blue-500 rounded-l-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="font-semibold text-gray-800">Ti</p>
+                                <p class="text-xs text-gray-500">{{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-700 whitespace-pre-wrap">{{ odgovor.odgovor }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% endfor %}
             {% endif %}
         </div>
-        
+
+        <!-- Forma za novi odgovor korisnika -->
+        {% if pitanje.status != 'zatvoreno' %}
+        <div class="border-t pt-6">
+            <h4 class="font-semibold text-gray-700 mb-3">
+                <i class="fas fa-reply mr-2"></i>Odgovori:
+            </h4>
+            <form method="post" action="{% url 'support_user_reply' pitanje.id %}">
+                {% csrf_token %}
+                <textarea name="odgovor" rows="4" required placeholder="Napiši svoj odgovor..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"></textarea>
+                <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Pošalji Odgovor</span>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="border-t pt-6 text-center text-gray-500">
+            <i class="fas fa-lock text-4xl mb-2 opacity-30"></i>
+            <p>Ticket je zatvoren. Ne možete dodavati nove odgovore.</p>
+        </div>
+        {% endif %}
+
         <!-- Action Buttons -->
         {% if pitanje.status != 'zatvoreno' %}
         <div class="flex gap-3 pt-6 border-t border-gray-200">
-            <form method="post" action="{% url 'support_delete' pitanje.id %}" 
-                  onsubmit="return confirm('Da li ste sigurni da želite obrisati ovo pitanje?')" 
-                  class="flex-1">
+            <form method="post" action="{% url 'support_delete' pitanje.id %}"
+                onsubmit="return confirm('Da li ste sigurni da želite obrisati ovo pitanje?')" class="flex-1">
                 {% csrf_token %}
-                <button type="submit" class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2">
+                <button type="submit"
+                    class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2">
                     <i class="fas fa-trash"></i>
                     <span>Obriši Ticket</span>
                 </button>

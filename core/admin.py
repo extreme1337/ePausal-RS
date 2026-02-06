@@ -238,10 +238,58 @@ class BankaAdmin(admin.ModelAdmin):
 
 @admin.register(Uplatnica)
 class UplatnicaAdmin(admin.ModelAdmin):
-    list_display = ["korisnik", "datum", "primalac", "iznos", "datum_kreiranja"]
-    list_filter = ["primalac", "datum"]
-    search_fields = ["korisnik__ime", "svrha"]
+    list_display = [
+        "korisnik",
+        "datum",
+        "vrsta_uplate",
+        "primalac_naziv",
+        "iznos",
+        "datum_kreiranja",
+    ]
+    list_filter = ["vrsta_uplate", "primalac_tip", "datum", "datum_kreiranja"]
+    search_fields = ["korisnik__ime", "svrha", "primalac_naziv"]
     date_hierarchy = "datum"
+    readonly_fields = ["datum_kreiranja"]
+
+    fieldsets = (
+        ("Osnovni podaci", {"fields": ("korisnik", "vrsta_uplate", "datum", "iznos")}),
+        (
+            "Primalac",
+            {
+                "fields": (
+                    "primalac_tip",
+                    "primalac_naziv",
+                    "primalac_adresa",
+                    "primalac_grad",
+                )
+            },
+        ),
+        ("Računi", {"fields": ("racun_posiljaoca", "racun_primaoca")}),
+        (
+            "Poreska polja",
+            {
+                "fields": (
+                    "poresko_broj",
+                    "vrsta_placanja",
+                    "vrsta_prihoda",
+                    "opstina",
+                    "budzetska_organizacija",
+                    "sifra_placanja",
+                    "poziv_na_broj",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Ostalo",
+            {"fields": ("svrha", "fajl", "datum_kreiranja"), "classes": ("collapse",)},
+        ),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing
+            return self.readonly_fields + ["datum_kreiranja"]
+        return self.readonly_fields
 
 
 @admin.register(Bilans)
@@ -614,9 +662,18 @@ class SupportPitanjeAdmin(admin.ModelAdmin):
 
 @admin.register(SupportOdgovor)
 class SupportOdgovorAdmin(admin.ModelAdmin):
-    list_display = ["pitanje", "admin", "datum_odgovora"]
-    list_filter = ["datum_odgovora"]
+    list_display = ["pitanje", "autor", "je_admin_odgovor", "datum_odgovora"]
+    list_filter = ["je_admin_odgovor", "datum_odgovora"]
+    search_fields = ["odgovor", "pitanje__naslov"]
     readonly_fields = ["datum_odgovora"]
+
+    fieldsets = (
+        ("Odgovor", {"fields": ("pitanje", "autor", "je_admin_odgovor", "odgovor")}),
+        ("Datum", {"fields": ("datum_odgovora",), "classes": ("collapse",)}),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("pitanje", "autor")
 
 
 @admin.register(SupportSlika)

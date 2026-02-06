@@ -1,224 +1,180 @@
 {% extends 'core/base.html' %}
 
-{% block title %}Ticket #{{ pitanje.id }} - Admin Panel{% endblock %}
+{% block title %}Ticket #{{ pitanje.id }} - Podrška{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto p-6">
+<div class="max-w-5xl mx-auto p-6">
     <!-- Back Button -->
     <div class="mb-4">
         <a href="/admin-panel/?tab=support" class="text-blue-600 hover:text-blue-800 flex items-center gap-2">
             <i class="fas fa-arrow-left"></i>
-            <span>Nazad na Support</span>
+            <span>Nazad na Support Panel</span>
         </a>
     </div>
-    
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- LEFT: Ticket Info -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Ticket Header -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-800">
-                            Ticket #{{ pitanje.id }} - {{ pitanje.naslov }}
-                        </h2>
-                        <p class="text-sm text-gray-500 mt-2">
-                            <i class="fas fa-calendar mr-1"></i>
-                            Kreirano: {{ pitanje.datum_kreiranja|date:"d.m.Y H:i" }}
-                        </p>
-                    </div>
-                    
-                    <!-- Status -->
-                    {% if pitanje.status == 'novo' %}
-                    <span class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
-                        <i class="fas fa-clock"></i> NOVO
-                    </span>
-                    {% elif pitanje.status == 'u_obradi' %}
-                    <span class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-bold">
-                        <i class="fas fa-spinner"></i> U OBRADI
-                    </span>
-                    {% elif pitanje.status == 'rijeseno' %}
-                    <span class="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold">
-                        <i class="fas fa-check"></i> RIJEŠENO
-                    </span>
-                    {% else %}
-                    <span class="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-bold">
-                        <i class="fas fa-lock"></i> ZATVORENO
-                    </span>
-                    {% endif %}
-                </div>
-                
-                <!-- Korisnik Info -->
-                <div class="bg-gray-50 rounded-lg p-4 mb-4">
-                    <div class="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                            <span class="text-gray-600">Korisnik:</span>
-                            <span class="font-bold text-gray-800">{{ pitanje.korisnik.ime }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-600">Email:</span>
-                            <span class="font-medium text-gray-800">{{ pitanje.korisnik.user.email }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-600">Plan:</span>
-                            <span class="font-medium text-gray-800">{{ pitanje.korisnik.plan }}</span>
-                        </div>
-                        <div>
-                            <span class="text-gray-600">JIB:</span>
-                            <span class="font-mono text-gray-800">{{ pitanje.korisnik.jib }}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Poruka -->
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 class="font-semibold text-gray-700 mb-2">Poruka:</h4>
-                    <p class="text-gray-700 whitespace-pre-wrap">{{ pitanje.poruka }}</p>
-                </div>
-                
-                <!-- Slike -->
-                {% if pitanje.slike.count > 0 %}
-                <div class="bg-white border border-gray-200 rounded-lg p-4">
-                    <h4 class="font-semibold text-gray-700 mb-3">Priložene slike ({{ pitanje.slike.count }}):</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {% for slika in pitanje.slike.all %}
-                        <a href="{{ slika.slika.url }}" target="_blank" class="block">
-                            <img src="{{ slika.slika.url }}" 
-                                 class="w-full h-48 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition">
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">
+                    Ticket #{{ pitanje.id }} - {{ pitanje.naslov }}
+                </h2>
+                <p class="text-sm text-gray-500 mt-2">
+                    <i class="fas fa-calendar mr-1"></i>
+                    {{ pitanje.datum_kreiranja|date:"d.m.Y H:i" }}
+                </p>
             </div>
-            
-            <!-- Odgovori -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <i class="fas fa-comments text-green-600"></i>
-                    Odgovori ({{ pitanje.odgovori.count }})
-                </h3>
-                
-                {% if pitanje.odgovori.count == 0 %}
-                <div class="text-center py-8 text-gray-500">
-                    <i class="fas fa-comment-slash text-4xl mb-2 opacity-30"></i>
-                    <p>Nema odgovora</p>
+
+            <!-- Status -->
+            {% if pitanje.status == 'novo' %}
+            <span class="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">
+                <i class="fas fa-clock"></i> NOVO
+            </span>
+            {% elif pitanje.status == 'u_obradi' %}
+            <span class="px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full text-sm font-bold">
+                <i class="fas fa-spinner"></i> U OBRADI
+            </span>
+            {% elif pitanje.status == 'rijeseno' %}
+            <span class="px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-bold">
+                <i class="fas fa-check"></i> RIJEŠENO
+            </span>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-bold">
+                <i class="fas fa-lock"></i> ZATVORENO
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Tvoja Početna Poruka -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4 mb-6">
+            <div class="flex items-start gap-3 mb-2">
+                <div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold">
+                    {{ request.user.username|first|upper }}
                 </div>
-                {% else %}
-                <div class="space-y-4">
-                    {% for odgovor in pitanje.odgovori.all %}
+                <div>
+                    <p class="font-semibold text-gray-800">Ti</p>
+                    <p class="text-xs text-gray-500">{{ pitanje.datum_kreiranja|date:"d.m.Y H:i" }}</p>
+                </div>
+            </div>
+            <p class="text-gray-700 whitespace-pre-wrap ml-13">{{ pitanje.poruka }}</p>
+
+            <!-- Slike -->
+            {% if pitanje.slike.count > 0 %}
+            <div class="mt-4 ml-13">
+                <p class="text-sm text-gray-600 mb-2">Priložene slike:</p>
+                <div class="grid grid-cols-3 gap-2">
+                    {% for slika in pitanje.slike.all %}
+                    <a href="{{ slika.slika.url }}" target="_blank">
+                        <img src="{{ slika.slika.url }}"
+                            class="w-full h-32 object-cover rounded border-2 border-blue-200 hover:border-blue-500 transition">
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Konverzacija Thread -->
+        <div class="space-y-4 mb-6">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-comments text-green-600"></i>
+                Konverzacija ({{ pitanje.odgovori.count }})
+            </h3>
+
+            {% if pitanje.odgovori.count == 0 %}
+            <div class="text-center py-8 bg-gray-50 rounded-lg text-gray-500">
+                <i class="fas fa-clock text-4xl mb-2 opacity-30"></i>
+                <p>Čeka se odgovor od tima podrške...</p>
+            </div>
+            {% else %}
+            <!-- Thread odgovora -->
+            {% for odgovor in pitanje.odgovori.all %}
+            {% if odgovor.je_admin_odgovor %}
+            <!-- Admin odgovor -->
+            <div class="flex items-start gap-3">
+                <div
+                    class="w-10 h-10 bg-green-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <div class="flex-1">
                     <div class="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
                         <div class="flex justify-between items-start mb-2">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold">
-                                    A
-                                </div>
-                                <div>
-                                    <p class="font-semibold text-gray-800">{{ odgovor.admin.username }}</p>
-                                    <p class="text-xs text-gray-500">
-                                        {{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}
-                                    </p>
-                                </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">
+                                    Support Tim
+                                    {% if odgovor.autor %}
+                                    <span class="text-sm text-gray-500">({{ odgovor.autor.username }})</span>
+                                    {% endif %}
+                                </p>
+                                <p class="text-xs text-gray-500">{{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}</p>
                             </div>
                         </div>
                         <p class="text-gray-700 whitespace-pre-wrap">{{ odgovor.odgovor }}</p>
                     </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                <!-- Novi Odgovor -->
-                <div class="mt-6 border-t pt-6">
-                    <h4 class="font-semibold text-gray-700 mb-3">Dodaj odgovor:</h4>
-                    <form method="post" action="{% url 'admin_support_reply' pitanje.id %}">
-                        {% csrf_token %}
-                        <textarea 
-                            name="odgovor" 
-                            rows="4"
-                            required
-                            placeholder="Napiši odgovor korisniku..."
-                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"
-                        ></textarea>
-                        <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
-                            <i class="fas fa-paper-plane"></i>
-                            <span>Pošalji Odgovor</span>
-                        </button>
-                    </form>
                 </div>
             </div>
-        </div>
-        
-        <!-- RIGHT: Actions -->
-        <div class="lg:col-span-1">
-            <div class="bg-white rounded-lg shadow-md p-6 sticky top-6">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">
-                    <i class="fas fa-cog text-gray-600"></i>
-                    Upravljanje
-                </h3>
-                
-                <form method="post" action="{% url 'admin_support_update' pitanje.id %}" class="space-y-4">
-                    {% csrf_token %}
-                    
-                    <!-- Status -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                        <select name="status" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                            {% for value, label in status_choices %}
-                            <option value="{{ value }}" {% if pitanje.status == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- Prioritet -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Prioritet</label>
-                        <select name="prioritet" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
-                            {% for value, label in prioritet_choices %}
-                            <option value="{{ value }}" {% if pitanje.prioritet == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <!-- Assign to me -->
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" name="assign_to_me" id="assign_to_me" class="rounded">
-                        <label for="assign_to_me" class="text-sm text-gray-700">
-                            Dodijeli meni ({{ request.user.username }})
-                        </label>
-                    </div>
-                    
-                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2">
-                        <i class="fas fa-save"></i>
-                        <span>Sačuvaj promjene</span>
-                    </button>
-                </form>
-                
-                <!-- Ticket Info -->
-                <div class="mt-6 pt-6 border-t border-gray-200">
-                    <h4 class="font-semibold text-gray-700 mb-3">Info:</h4>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Kreiran:</span>
-                            <span class="font-medium">{{ pitanje.datum_kreiranja|date:"d.m.Y H:i" }}</span>
+            {% else %}
+            <!-- Korisnik odgovor -->
+            <div class="flex items-start gap-3 flex-row-reverse">
+                <div
+                    class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">
+                    {{ request.user.username|first|upper }}
+                </div>
+                <div class="flex-1">
+                    <div class="bg-blue-50 border-r-4 border-blue-500 rounded-l-lg p-4">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <p class="font-semibold text-gray-800">Ti</p>
+                                <p class="text-xs text-gray-500">{{ odgovor.datum_odgovora|date:"d.m.Y H:i" }}</p>
+                            </div>
                         </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Ažuriran:</span>
-                            <span class="font-medium">{{ pitanje.datum_azuriranja|date:"d.m.Y H:i" }}</span>
-                        </div>
-                        {% if pitanje.datum_zatvaranja %}
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Zatvoren:</span>
-                            <span class="font-medium">{{ pitanje.datum_zatvaranja|date:"d.m.Y H:i" }}</span>
-                        </div>
-                        {% endif %}
+                        <p class="text-gray-700 whitespace-pre-wrap">{{ odgovor.odgovor }}</p>
                     </div>
                 </div>
             </div>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
         </div>
+
+        <!-- Forma za novi odgovor korisnika -->
+        {% if pitanje.status != 'zatvoreno' %}
+        <div class="border-t pt-6">
+            <h4 class="font-semibold text-gray-700 mb-3">
+                <i class="fas fa-reply mr-2"></i>Odgovori:
+            </h4>
+            <form method="post" action="{% url 'support_user_reply' pitanje.id %}">
+                {% csrf_token %}
+                <textarea name="odgovor" rows="4" required placeholder="Napiši svoj odgovor..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-3"></textarea>
+                <button type="submit"
+                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Pošalji Odgovor</span>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="border-t pt-6 text-center text-gray-500">
+            <i class="fas fa-lock text-4xl mb-2 opacity-30"></i>
+            <p>Ticket je zatvoren. Ne možete dodavati nove odgovore.</p>
+        </div>
+        {% endif %}
+
+        <!-- Action Buttons -->
+        {% if pitanje.status != 'zatvoreno' %}
+        <div class="flex gap-3 pt-6 border-t border-gray-200">
+            <form method="post" action="{% url 'support_delete' pitanje.id %}"
+                onsubmit="return confirm('Da li ste sigurni da želite obrisati ovo pitanje?')" class="flex-1">
+                {% csrf_token %}
+                <button type="submit"
+                    class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center justify-center gap-2">
+                    <i class="fas fa-trash"></i>
+                    <span>Obriši Ticket</span>
+                </button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

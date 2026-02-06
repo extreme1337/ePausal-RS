@@ -1,3 +1,4 @@
+from collections import defaultdict
 import re
 import PyPDF2
 from django.core.files.base import ContentFile
@@ -172,19 +173,34 @@ def generate_invoice_doc(faktura):
 
 
 def generate_payment_slip_png(uplatnica, korisnik):
-    """Generiši PNG uplatnicu - tačan RS format"""
+    """Generiši PNG uplatnicu - AŽURIRANO sa novim poljima"""
 
-    if uplatnica.primalac == "PURS":
-        racun_primaoca = "562008000000557"
-        naziv_primaoca = "PORESKA UPRAVA REPUBLIKE SRPSKE"
-        proracunska_org = "711112"
-    else:
-        racun_primaoca = "551000000005078"
-        naziv_primaoca = "FOND ZDRAVSTVENOG OSIGURANJA RS"
-        proracunska_org = "711121"
+    # Podaci iz uplatnice objekta
+    racun_primaoca = uplatnica.racun_primaoca.replace("-", "")
+    racun_posiljaoca = uplatnica.racun_posiljaoca.replace("-", "")
 
-    racun_posiljaoca = korisnik.racun.replace("-", "")
-    poziv_na_broj = korisnik.jib
+    # Poresko broj (JIB)
+    poresko_broj = uplatnica.poresko_broj or korisnik.jib
+
+    # Vrsta prihoda - auto ili custom
+    vrsta_prihoda = (
+        uplatnica.get_vrsta_prihoda_auto()
+        if hasattr(uplatnica, "get_vrsta_prihoda_auto")
+        else (uplatnica.vrsta_prihoda or "")
+    )
+
+    # Budžetska org - auto ili custom
+    budzetska_org = (
+        uplatnica.get_budzetska_org_auto()
+        if hasattr(uplatnica, "get_budzetska_org_auto")
+        else (uplatnica.budzetska_organizacija or "9999999")
+    )
+
+    # Ostala polja
+    poziv_na_broj = uplatnica.poziv_na_broj or "0000000000"
+    vrsta_placanja = uplatnica.vrsta_placanja or "0"
+    opstina = uplatnica.opstina or "14"
+    sifra_placanja = uplatnica.sifra_placanja or "43"
 
     img = Image.new("RGB", (2100, 700), "white")
     draw = ImageDraw.Draw(img)
@@ -218,14 +234,27 @@ def generate_payment_slip_png(uplatnica, korisnik):
     draw.line([(25, 188), (560, 188)], fill="black", width=1)
     draw.line([(25, 218), (560, 218)], fill="black", width=1)
 
-    draw.text((25, 238), "Primalac/Primalac", fill="black", font=font_small)
+    draw.text((25, 238), "Primalac", fill="black", font=font_small)
     draw.line([(25, 258), (560, 258)], fill="black", width=1)
-    draw.text((25, 278), naziv_primaoca, fill="black", font=font_bold)
+    draw.text((25, 278), uplatnica.primalac_naziv, fill="black", font=font_bold)
     draw.line([(25, 288), (560, 288)], fill="black", width=1)
+
+    # Adresa i grad primaoca (ako postoje)
+    if uplatnica.primalac_adresa:
+        draw.text((25, 298), uplatnica.primalac_adresa, fill="black", font=font_small)
     draw.line([(25, 318), (560, 318)], fill="black", width=1)
 
     draw.text((25, 338), "Mjesto i datum uplate", fill="black", font=font_small)
-    datum_str = uplatnica.datum.strftime("%d%m%Y")
+
+    # Konvertuj datum u string ako je potrebno
+    if isinstance(uplatnica.datum, str):
+        from datetime import datetime
+
+        datum_obj = datetime.strptime(uplatnica.datum, "%Y-%m-%d").date()
+        datum_str = datum_obj.strftime("%d%m%Y")
+    else:
+        datum_str = uplatnica.datum.strftime("%d%m%Y")
+
     draw_number_boxes(draw, datum_str, 400, 323, 8, 21, 24, font_bold)
 
     draw.text((25, 468), "Potpis i pečat", fill="black", font=font_small)
@@ -235,69 +264,84 @@ def generate_payment_slip_png(uplatnica, korisnik):
     draw.rectangle([400, 452, 570, 652], outline="black", width=1)
     draw.text((455, 545), "Pečat banke", fill="black", font=font_small)
 
-    draw.text((25, 668), "Potpis", fill="black", font=font_small)
-    draw.text((25, 686), "ovlaštene osobe/lica", fill="black", font=font_small)
-    draw.line([(25, 710), (350, 710)], fill="black", width=1)
-
     # DESNA STRANA
     draw.text((598, 28), "Račun", fill="black", font=font_small)
-    draw.text((598, 43), "pošiljatelja/pošiljaoca", fill="black", font=font_small)
+    draw.text((598, 43), "pošiljatelja", fill="black", font=font_small)
     draw_number_boxes(draw, racun_posiljaoca, 755, 23, 18, 21, 24, font_bold)
 
     draw.text((598, 78), "Račun", fill="black", font=font_small)
-    draw.text((598, 93), "primaoca/primaoca", fill="black", font=font_small)
+    draw.text((598, 93), "primaoca", fill="black", font=font_small)
     draw_number_boxes(draw, racun_primaoca, 755, 73, 18, 21, 24, font_bold)
 
+    # Iznos
     draw.text((598, 138), "KM", fill="black", font=font_bold)
     draw.line([(650, 148), (1810, 148)], fill="black", width=1)
-    cio, dec = str(uplatnica.iznos).split(".")
+
+    # Razdvoji cijeli i decimalni dio - SIGURNO
+    iznos_str = f"{float(uplatnica.iznos):.2f}"
+    if "." in iznos_str:
+        cio, dec = iznos_str.split(".")
+    else:
+        cio = iznos_str
+        dec = "00"
+
     draw.text((1200, 135), cio, fill="black", font=font_bold)
     draw.text((1310, 135), ",", fill="black", font=font_bold)
     draw.text((1360, 135), dec, fill="black", font=font_bold)
-    draw.rectangle([1820, 132, 1838, 150], outline="black", width=1)
-    draw.text((1845, 138), "HITNO", fill="black", font=font_small)
 
     draw.text(
         (598, 175), "samo za uplate javnih prihoda", fill="black", font=font_italic
     )
     draw.rectangle([728, 180, 1918, 201], outline="black", width=1)
 
+    # Poresko broj
     draw.text((598, 218), "Broj poreznog", fill="black", font=font_small)
     draw.text((598, 233), "obveznika", fill="black", font=font_small)
-    draw_number_boxes(draw, poziv_na_broj[:13], 748, 208, 13, 23, 26, font_bold)
+    draw_number_boxes(draw, poresko_broj[:13], 748, 208, 13, 23, 26, font_bold)
 
+    # Vrsta uplate
     draw.text((1332, 218), "Vrsta", fill="black", font=font_small)
     draw.text((1332, 233), "uplate", fill="black", font=font_small)
-    draw_number_boxes(draw, "", 1405, 208, 2, 23, 26, font_bold)
+    draw_number_boxes(draw, vrsta_placanja, 1405, 208, 2, 23, 26, font_bold)
 
+    # Porezni period
     draw.rectangle([1227, 255, 1577, 393], outline="black", width=1)
     draw.text((1310, 273), "Porezni period", fill="black", font=font_italic)
 
+    # Vrsta prihoda
     draw.text((598, 298), "Vrsta prihoda", fill="black", font=font_small)
-    draw_number_boxes(draw, "", 725, 283, 3, 23, 26, font_bold)
-    draw.text((1240, 310), "Od", fill="black", font=font_small)
-    draw_number_boxes(draw, "", 1285, 295, 8, 23, 26, font_bold)
+    draw_number_boxes(draw, vrsta_prihoda[:6], 725, 283, 6, 23, 26, font_bold)
 
-    draw.text((1240, 360), "Do", fill="black", font=font_small)
-    draw_number_boxes(draw, "", 1285, 345, 8, 23, 26, font_bold)
+    # Opština
+    draw.text((598, 365), "Opština", fill="black", font=font_small)
+    draw_number_boxes(draw, opstina, 672, 350, 3, 23, 26, font_bold)
 
-    draw.text((598, 365), "Općina", fill="black", font=font_small)
-    draw_number_boxes(draw, "14", 672, 350, 2, 23, 26, font_bold)
-
+    # Budžetska org
     draw.text((780, 358), "Proračunska/budžetska", fill="black", font=font_small)
     draw.text((780, 373), "organizacija", fill="black", font=font_small)
-    draw.rectangle([1005, 350, 1115, 376], fill="#CCCCCC", outline="black", width=1)
-    draw_number_boxes(draw, proracunska_org, 1120, 350, 6, 23, 26, font_bold)
+    draw_number_boxes(draw, budzetska_org, 1120, 350, 7, 23, 26, font_bold)
 
+    # Poziv na broj
     draw.text((598, 428), "Poziv", fill="black", font=font_small)
     draw.text((598, 443), "na broj", fill="black", font=font_small)
-    draw_number_boxes(draw, poziv_na_broj, 705, 418, 13, 23, 26, font_bold)
+    draw_number_boxes(draw, poziv_na_broj[:13], 705, 418, 13, 23, 26, font_bold)
+
+    # Sifra placanja
+    draw.text((1500, 428), "Šifra", fill="black", font=font_small)
+    draw.text((1500, 443), "plaćanja", fill="black", font=font_small)
+    draw_number_boxes(draw, sifra_placanja, 1600, 418, 2, 23, 26, font_bold)
 
     buffer = BytesIO()
     img.save(buffer, format="PNG")
     buffer.seek(0)
 
-    filename = f"nalog-uplate-{uplatnica.primalac}-{uplatnica.datum}.png"
+    # Datum za filename
+    if isinstance(uplatnica.datum, str):
+        datum_filename = uplatnica.datum
+    else:
+        datum_filename = uplatnica.datum.strftime("%Y-%m-%d")
+
+    filename = f"uplatnica-{uplatnica.vrsta_uplate}-{datum_filename}.png"
     return ContentFile(buffer.read(), name=filename)
 
 
@@ -709,8 +753,6 @@ def parse_bank_statement_pdf(pdf_file):
     return []
 
 
-
-
 # ============================================
 # AUDIT & RATE LIMITING
 # ============================================
@@ -755,3 +797,127 @@ def check_rate_limit(user, action, limit=10, period_minutes=60):
     return True, None
 
 
+def generate_income_predictions(korisnik):
+    """Generiši AI predikcije prihoda za naredna 3 mjeseca"""
+    from decimal import Decimal
+    from datetime import datetime
+    from dateutil.relativedelta import relativedelta
+
+    # Uzmi prihode za posljednjih 6 mjeseci
+    prihodi = korisnik.prihodi.filter(vrsta="prihod").order_by("-mjesec")[:6]
+
+    if prihodi.count() < 3:
+        return []
+
+    # Grupisanje po mjesecu
+    mjesecni_iznosi = defaultdict(lambda: Decimal("0"))
+    for p in prihodi:
+        mjesecni_iznosi[p.mjesec] += p.iznos
+
+    # Izračunaj prosijek
+    iznosi = [float(mjesecni_iznosi[m]) for m in sorted(mjesecni_iznosi.keys())]
+    avg = sum(iznosi) / len(iznosi)
+
+    # Trend (rast/pad)
+    if len(iznosi) >= 2:
+        trend = (iznosi[-1] - iznosi[0]) / len(iznosi)
+    else:
+        trend = 0
+
+    predictions = []
+
+    # Posljednji mjesec
+    last_month_str = prihodi.first().mjesec
+    last_date = datetime.strptime(last_month_str, "%Y-%m")
+
+    for i in range(1, 4):
+        # Sljedeći mjesec
+        next_month = last_date + relativedelta(months=i)
+        mjesec_str = next_month.strftime("%Y-%m")
+
+        # Predikcija
+        predicted_amount = avg + (trend * i)
+        confidence = max(50, 95 - (i * 10))
+
+        # Mock objekat (bez spremanja u bazu)
+        class Prediction:
+            def __init__(self, mj, amt, conf):
+                self.mjesec = mj
+                self.predicted_income = Decimal(str(round(amt, 2)))
+                self.confidence = Decimal(conf)
+
+        predictions.append(Prediction(mjesec_str, predicted_amount, confidence))
+
+    return predictions
+
+
+def get_chart_data_prihodi_filtered(prihodi_queryset):
+    """Generiši chart data sa SVIM mjesecima u godini"""
+    from datetime import datetime
+
+    # Grupisanje po mjesecu
+    mjesecni_podaci = defaultdict(lambda: Decimal("0"))
+
+    for p in prihodi_queryset.filter(vrsta="prihod"):
+        mjesecni_podaci[p.mjesec] += p.iznos
+
+    if not mjesecni_podaci:
+        return {"labels": [], "datasets": []}
+
+    # Odredi godinu (prva ili sve)
+    sve_godine = sorted(set([m.split("-")[0] for m in mjesecni_podaci.keys()]))
+
+    labels = []
+    data_prihodi = []
+    data_porez = []
+    data_neto = []
+
+    # Za svaku godinu, generiši SVE mjesece (1-12)
+    for godina in sve_godine:
+        for mjesec in range(1, 13):
+            mjesec_key = f"{godina}-{mjesec:02d}"
+            iznos = mjesecni_podaci.get(mjesec_key, Decimal("0"))
+
+            labels.append(mjesec_key)
+            data_prihodi.append(float(iznos))
+            data_porez.append(float(iznos * Decimal("0.02")))
+            data_neto.append(float(iznos * Decimal("0.98")))
+
+    return {
+        "labels": labels,
+        "datasets": [
+            {
+                "label": "Prihodi",
+                "data": data_prihodi,
+                "borderColor": "rgb(59, 130, 246)",
+                "backgroundColor": "rgba(59, 130, 246, 0.2)",
+                "borderWidth": 3,
+                "tension": 0.4,
+                "pointRadius": 5,
+                "pointHoverRadius": 7,
+                "fill": False,  # Python False = JavaScript false
+            },
+            {
+                "label": "Porez",
+                "data": data_porez,
+                "borderColor": "rgb(249, 115, 22)",
+                "backgroundColor": "rgba(249, 115, 22, 0.2)",
+                "borderWidth": 3,
+                "tension": 0.4,
+                "pointRadius": 5,
+                "pointHoverRadius": 7,
+                "fill": False,
+            },
+            {
+                "label": "Neto",
+                "data": data_neto,
+                "borderColor": "rgb(34, 197, 94)",
+                "backgroundColor": "rgba(34, 197, 94, 0.2)",
+                "borderWidth": 3,
+                "tension": 0.4,
+                "pointRadius": 5,
+                "pointHoverRadius": 7,
+                "fill": False,
+            },
+        ],
+    }

@@ -10,47 +10,130 @@
         <p class="text-gray-600">{{ korisnik.plan }} plan • {{ korisnik.user.email }}</p>
     </div>
 
-    <!-- Stats Cards with Gradients -->
+    <!-- Year Filter -->
+    <div class="bg-white rounded-lg shadow-md p-4 mb-6">
+        <div class="flex items-center gap-4">
+            <span class="text-sm font-medium text-gray-700">
+                <i class="fas fa-filter mr-2"></i>Prikaži statistiku za:
+            </span>
+
+            <div class="flex gap-2">
+                <a href="?godina=all"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition {% if godina_filter == 'all' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    <i class="fas fa-globe mr-1"></i>Sve godine
+                </a>
+
+                {% for god in dostupne_godine %}
+                <a href="?godina={{ god }}"
+                    class="px-4 py-2 rounded-lg text-sm font-medium transition {% if godina_filter == god|stringformat:'s' %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                    {{ god }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Cards - Prihodi, Rashodi, Porez, Neto -->
     <div class="grid md:grid-cols-4 gap-6 mb-6">
+        <!-- Ukupan Prihod -->
         <div
-            class="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
-            <div class="flex items-center gap-3 mb-2">
-                <i class="fas fa-chart-line text-3xl"></i>
-                <h3 class="font-semibold">Ukupan prihod</h3>
+            class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white transform hover:scale-105 transition">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium opacity-90">Ukupan Prihod</h3>
+                <i class="fas fa-arrow-up text-3xl opacity-50"></i>
             </div>
             <p class="text-4xl font-bold">{{ stats.ukupno|floatformat:0 }}</p>
-            <p class="text-sm opacity-90 mt-1">KM</p>
+            <p class="text-sm opacity-75 mt-2">KM</p>
         </div>
 
+        <!-- Rashodi -->
         <div
-            class="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
-            <div class="flex items-center gap-3 mb-2">
-                <i class="fas fa-calculator text-3xl"></i>
-                <h3 class="font-semibold">Porez (2%)</h3>
+            class="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow-lg p-6 text-white transform hover:scale-105 transition">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium opacity-90">Rashodi</h3>
+                <i class="fas fa-arrow-down text-3xl opacity-50"></i>
+            </div>
+            <p class="text-4xl font-bold">{{ stats.rashodi|floatformat:0 }}</p>
+            <p class="text-sm opacity-75 mt-2">KM</p>
+        </div>
+
+        <!-- Porez -->
+        <div
+            class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg shadow-lg p-6 text-white transform hover:scale-105 transition">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium opacity-90">Porez</h3>
+                <i class="fas fa-percent text-3xl opacity-50"></i>
             </div>
             <p class="text-4xl font-bold">{{ stats.porez|floatformat:0 }}</p>
-            <p class="text-sm opacity-90 mt-1">KM</p>
+            <p class="text-sm opacity-75 mt-2">
+                {% if tip_preduzetnika == 'mali' %}2% mjesečno{% else %}10% godišnje{% endif %}
+            </p>
         </div>
 
+        <!-- Neto -->
         <div
-            class="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
-            <div class="flex items-center gap-3 mb-2">
-                <i class="fas fa-file-alt text-3xl"></i>
-                <h3 class="font-semibold">Doprinosi</h3>
-            </div>
-            <p class="text-4xl font-bold">{{ stats.doprinosi|floatformat:0 }}</p>
-            <p class="text-sm opacity-90 mt-1">KM</p>
-        </div>
-
-        <div
-            class="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg shadow-lg p-6 transform hover:scale-105 transition">
-            <div class="flex items-center gap-3 mb-2">
-                <i class="fas fa-check-circle text-3xl"></i>
-                <h3 class="font-semibold">Neto</h3>
+            class="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg p-6 text-white transform hover:scale-105 transition">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-sm font-medium opacity-90">Neto</h3>
+                <i class="fas fa-wallet text-3xl opacity-50"></i>
             </div>
             <p class="text-4xl font-bold">{{ stats.neto|floatformat:0 }}</p>
-            <p class="text-sm opacity-90 mt-1">KM</p>
+            <p class="text-sm opacity-75 mt-2">KM</p>
         </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid md:grid-cols-3 gap-6 mb-6">
+        <a href="{% url 'inbox' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition">
+                        Email Inbox
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        {% if inbox_count > 0 %}
+                        {{ inbox_count }} novih izvoda
+                        {% else %}
+                        Nema novih izvoda
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="relative">
+                    <i
+                        class="fas fa-envelope-open-text text-4xl text-blue-500 group-hover:text-blue-600 transition"></i>
+                    {% if inbox_count > 0 %}
+                    <span
+                        class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">
+                        {{ inbox_count }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'fakture' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition">
+                        Fakture
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ fakture_count }} faktura</p>
+                </div>
+                <i class="fas fa-file-invoice text-4xl text-green-500 group-hover:text-green-600 transition"></i>
+            </div>
+        </a>
+
+        <a href="{% url 'uplatnice' %}" class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition group">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition">
+                        Uplatnice
+                    </h3>
+                    <p class="text-sm text-gray-500 mt-1">{{ uplatnice_count }} uplatnica</p>
+                </div>
+                <i class="fas fa-receipt text-4xl text-purple-500 group-hover:text-purple-600 transition"></i>
+            </div>
+        </a>
     </div>
 
     <!-- Charts Row -->
@@ -60,77 +143,17 @@
             <h3 class="text-lg font-bold text-gray-800 mb-4">
                 <i class="fas fa-chart-area mr-2 text-blue-600"></i>
                 Prihodi po mjesecima
+                {% if godina_filter != 'all' %}
+                <span class="text-sm font-normal text-gray-500">- {{ godina_filter }}</span>
+                {% endif %}
             </h3>
-            <div style="height: 250px;">
+
+            <div style="position: relative; height: 300px; width: 100%;">
                 <canvas id="prihodiChart"></canvas>
             </div>
         </div>
 
-        <!-- Predictions Chart -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">
-                <i class="fas fa-crystal-ball mr-2 text-purple-600"></i>
-                AI Predikcije prihoda
-            </h3>
-            {% if predictions %}
-            <div style="height: 250px;">
-                <canvas id="predictionsChart"></canvas>
-            </div>
-            {% else %}
-            <div class="text-center py-8 text-gray-500">
-                <i class="fas fa-info-circle text-4xl mb-2 opacity-50"></i>
-                <p class="text-sm">Potrebno je najmanje 3 mjeseca podataka za predikcije</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- AI Predictions Cards -->
-    {% if predictions %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 class="text-lg font-bold text-gray-800 mb-4">
-            <i class="fas fa-brain mr-2 text-purple-600"></i>
-            AI Predikcije za naredne mjesece
-        </h3>
-        <div class="grid md:grid-cols-3 gap-4">
-            {% for pred in predictions %}
-            <div
-                class="border-2 border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-lg transition">
-                <p class="text-sm text-gray-600 mb-1">{{ pred.mjesec }}</p>
-                <p class="text-2xl font-bold text-purple-600">{{ pred.predicted_income|floatformat:0 }} KM</p>
-                <div class="mt-2 flex items-center gap-2">
-                    <div class="flex-1 bg-gray-200 rounded-full h-2">
-                        <div class="bg-purple-500 h-2 rounded-full transition-all"
-                            style="width: {{ pred.confidence }}%"></div>
-                    </div>
-                    <span class="text-xs text-gray-600">{{ pred.confidence|floatformat:0 }}%</span>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Quick Actions & Overview -->
-    <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Brzi pregled</h3>
-            <div class="space-y-3">
-                <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span class="text-gray-700"><i class="fas fa-file-invoice mr-2 text-blue-600"></i>Fakture</span>
-                    <span class="font-semibold text-blue-600">{{ fakture_count }}</span>
-                </div>
-                <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                    <span class="text-gray-700"><i class="fas fa-money-check mr-2 text-green-600"></i>Uplatnice</span>
-                    <span class="font-semibold text-green-600">{{ uplatnice_count }}</span>
-                </div>
-                <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                    <span class="text-gray-700"><i class="fas fa-envelope mr-2 text-red-600"></i>Email Inbox</span>
-                    <span class="font-semibold text-red-600">{{ inbox_count }}</span>
-                </div>
-            </div>
-        </div>
-
+        <!-- Plan Details -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">
                 <i class="fas fa-crown mr-2 text-purple-600"></i>
@@ -147,29 +170,16 @@
                     <span class="text-gray-600">Registrovan</span>
                     <span class="font-semibold">{{ korisnik.registrovan|date:"d.m.Y" }}</span>
                 </div>
-
-                <!-- Trial/Subscription Expiry -->
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Pretplata ističe</span>
-                    {% if korisnik.trial_end_date %}
                     {% if subscription_days_left > 0 %}
                     <span class="font-semibold text-green-600">
-                        <i class="fas fa-calendar-check mr-1"></i>
                         {{ korisnik.trial_end_date|date:"d.m.Y" }}
                     </span>
                     {% else %}
-                    <span class="font-semibold text-red-600">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>
-                        Istekla
-                    </span>
-                    {% endif %}
-                    {% else %}
-                    <span class="font-semibold text-gray-500">
-                        Nije postavljeno
-                    </span>
+                    <span class="font-semibold text-red-600">Istekla</span>
                     {% endif %}
                 </div>
-
                 {% if subscription_days_left > 0 %}
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Preostalo</span>
@@ -179,7 +189,6 @@
                     </span>
                 </div>
                 {% endif %}
-
                 <div class="flex justify-between items-center">
                     <span class="text-gray-600">Status</span>
                     {% if subscription_days_left > 0 %}
@@ -194,7 +203,6 @@
                 </div>
             </div>
 
-            <!-- Change Plan Button -->
             <div class="mt-6 pt-4 border-t border-gray-200">
                 <button onclick="openChangePlanDashboard()"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all">
@@ -204,9 +212,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Quick Stats -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Brzi pregled</h3>
+        <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span class="text-gray-700"><i class="fas fa-file-invoice mr-2 text-blue-600"></i>Fakture</span>
+                <span class="font-semibold text-blue-600">{{ fakture_count }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span class="text-gray-700"><i class="fas fa-money-check mr-2 text-green-600"></i>Uplatnice</span>
+                <span class="font-semibold text-green-600">{{ uplatnice_count }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                <span class="text-gray-700"><i class="fas fa-envelope mr-2 text-red-600"></i>Email Inbox</span>
+                <span class="font-semibold text-red-600">{{ inbox_count }}</span>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Change Plan Modal (Dashboard) -->
+<!-- Change Plan Modal -->
 <div id="changePlanDashboardModal"
     class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-5xl w-full p-6 max-h-[90vh] overflow-y-auto">
@@ -253,10 +280,6 @@
                         <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
                         <span>Fakture</span>
                     </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
-                        <span>Email podrška</span>
-                    </li>
                 </ul>
                 {% if korisnik.plan == 'Starter' %}
                 <button disabled
@@ -298,10 +321,6 @@
                         <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
                         <span>Uplatnice</span>
                     </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
-                        <span>Prioritet</span>
-                    </li>
                 </ul>
                 {% if korisnik.plan == 'Professional' %}
                 <button disabled
@@ -338,10 +357,6 @@
                     <li class="flex items-start">
                         <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
                         <span>Custom izvještaji</span>
-                    </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
-                        <span>Multi korisnici</span>
                     </li>
                 </ul>
                 {% if korisnik.plan == 'Business' %}
@@ -380,10 +395,6 @@
                         <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
                         <span>SLA</span>
                     </li>
-                    <li class="flex items-start">
-                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
-                        <span>White label</span>
-                    </li>
                 </ul>
                 {% if korisnik.plan == 'Enterprise' %}
                 <button disabled
@@ -401,477 +412,185 @@
     </div>
 </div>
 
-<!-- Upgrade/Downgrade Confirmation Modal -->
+<!-- Plan Change Confirm Modal -->
 <div id="planChangeConfirmModal"
     class="hidden fixed inset-0 bg-black bg-opacity-75 z-[60] flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-2xl font-bold text-gray-900">
-                <i class="fas fa-exchange-alt text-blue-600 mr-2"></i>
-                Potvrdi Promjenu Plana
-            </h3>
-            <button onclick="closePlanChangeConfirm()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-        </div>
-
+        <h3 class="text-2xl font-bold mb-4">Potvrdi Promjenu</h3>
         <div id="upgradeContent" class="hidden">
-            <!-- Upgrade Info -->
-            <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
-                <p class="font-semibold text-green-800 mb-2">
-                    <i class="fas fa-arrow-up mr-2"></i>
-                    Upgrade: <span id="currentPlanUpgrade"></span> → <span id="newPlanUpgrade"></span>
-                </p>
-                <p class="text-sm text-green-700">
-                    Odmah dobijate pristup svim feature-ima višeg plana!
-                </p>
-            </div>
-
-            <!-- Timing Options -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700 mb-3">
-                    Kada želite da se primijeni nova cijena?
-                </label>
-                <div class="space-y-3">
-                    <!-- Immediate -->
-                    <label
-                        class="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                        <input type="radio" name="timing" value="immediate" checked class="mt-1 mr-3">
-                        <div class="flex-1">
-                            <p class="font-semibold text-gray-900">
-                                <i class="fas fa-bolt text-yellow-500 mr-2"></i>
-                                Odmah (Prorated)
-                            </p>
-                            <p class="text-sm text-gray-600 mt-1">
-                                Naplatićemo samo <strong id="proratedAmount">0 KM</strong> za preostale dane
-                            </p>
-                            <p class="text-xs text-gray-500 mt-1" id="proratedDetails"></p>
-                        </div>
-                    </label>
-
-                    <!-- Next Month -->
-                    <label
-                        class="flex items-start p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                        <input type="radio" name="timing" value="next_month" class="mt-1 mr-3">
-                        <div class="flex-1">
-                            <p class="font-semibold text-gray-900">
-                                <i class="fas fa-calendar mr-2 text-blue-500"></i>
-                                Od sljedećeg mjeseca
-                            </p>
-                            <p class="text-sm text-gray-600 mt-1">
-                                Novi plan počinje <strong id="nextMonthDate"></strong>
-                            </p>
-                            <p class="text-xs text-gray-500 mt-1">Nastavite da koristite trenutni plan do isteka</p>
-                        </div>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Submit -->
-            <div class="flex gap-3">
-                <button onclick="closePlanChangeConfirm()"
-                    class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg transition-all">
-                    Otkaži
-                </button>
-                <button onclick="submitPlanChange()" id="confirmPlanBtn"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-all font-semibold">
-                    <i class="fas fa-check mr-2"></i>
-                    Potvrdi
-                </button>
-            </div>
-        </div>
-
-        <div id="downgradeContent" class="hidden">
-            <!-- Downgrade Info -->
-            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
-                <p class="font-semibold text-yellow-800 mb-2">
-                    <i class="fas fa-arrow-down mr-2"></i>
-                    Downgrade: <span id="currentPlanDowngrade"></span> → <span id="newPlanDowngrade"></span>
-                </p>
-                <p class="text-sm text-yellow-700">
-                    Downgrade je moguć samo od početka sljedećeg mjeseca
-                </p>
-            </div>
-
-            <div class="bg-blue-50 rounded-lg p-4 mb-6">
-                <p class="text-sm text-gray-700 mb-2">
-                    <i class="fas fa-calendar-alt mr-2 text-blue-600"></i>
-                    <strong>Novi plan počinje:</strong> <span id="downgradeDate"></span>
-                </p>
-                <p class="text-sm text-gray-700">
-                    <i class="fas fa-info-circle mr-2 text-blue-600"></i>
-                    Do tada nastavite da koristite trenutni <strong>{{ korisnik.plan }}</strong> plan
-                </p>
-            </div>
-
-            <div class="flex gap-3">
-                <button onclick="closePlanChangeConfirm()"
-                    class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 px-6 rounded-lg transition-all">
-                    Otkaži
-                </button>
-                <button onclick="submitPlanChange()" id="confirmDowngradeBtn"
-                    class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 px-6 rounded-lg transition-all font-semibold">
-                    <i class="fas fa-check mr-2"></i>
-                    Zakaži Downgrade
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Prorated Payment Modal -->
-<div id="proratedPaymentModal"
-    class="hidden fixed inset-0 bg-black bg-opacity-75 z-[70] flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h3 class="text-2xl font-bold text-gray-900">
-                <i class="fas fa-credit-card text-green-600 mr-2"></i>
-                Potvrdi Upgrade
-            </h3>
-            <button onclick="closeProratedPaymentModal()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-2xl"></i>
-            </button>
-        </div>
-
-        <!-- Upgrade Summary -->
-        <div class="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 mb-6">
-            <div class="flex items-center justify-between mb-3">
-                <span class="text-sm text-gray-700">Novi plan:</span>
-                <span class="font-bold text-lg text-blue-900" id="prorated-new-plan"></span>
-            </div>
-            <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-200">
-                <span class="text-sm text-gray-700">Prorated iznos:</span>
-                <span class="font-bold text-2xl text-green-600" id="prorated-amount"></span>
-            </div>
-            <div class="text-xs text-gray-600">
-                <i class="fas fa-calculator mr-1"></i>
-                <span id="prorated-details-text"></span>
-            </div>
-        </div>
-
-        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-6">
-            <p class="text-xs text-blue-700">
-                <i class="fas fa-info-circle mr-2"></i>
-                Naplatićemo samo razliku u cijeni za preostale dane ovog mjeseca. Sljedeći mjesec će biti puna cijena
-                novog plana.
-            </p>
-        </div>
-
-        <!-- Payment Form -->
-        <form id="proratedPaymentForm" method="POST" action="{% url 'process_upgrade_payment' %}">
-            {% csrf_token %}
-            <input type="hidden" id="upgrade-plan-name" name="new_plan">
-            <input type="hidden" id="upgrade-prorated-amount" name="prorated_amount">
-
+            <p class="mb-4">Upgrade na: <strong id="newPlanUpgrade"></strong></p>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Broj kartice
+                <label class="flex items-center">
+                    <input type="radio" name="timing" value="immediate" checked class="mr-2">
+                    <span>Odmah (Prorated: <span id="proratedAmount">0</span> KM)</span>
                 </label>
-                <input type="text" name="card_number" placeholder="1234 5678 9012 3456" maxlength="19" required
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
+                <label class="flex items-center mt-2">
+                    <input type="radio" name="timing" value="next_month" class="mr-2">
+                    <span>Od sljedećeg mjeseca</span>
+                </label>
             </div>
-
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Datum isteka
-                    </label>
-                    <input type="text" name="expiry" placeholder="MM/YY" maxlength="5" required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                        CVV
-                    </label>
-                    <input type="text" name="cvv" placeholder="123" maxlength="3" required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500">
-                </div>
-            </div>
-
-            <button type="submit" id="prorated-submit-btn"
-                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all">
-                <i class="fas fa-lock mr-2"></i>
-                Potvrdi i Plati
+            <button onclick="submitPlanChange()" class="w-full bg-blue-600 text-white py-3 rounded-lg">
+                Potvrdi
             </button>
-        </form>
-
-        <p class="text-xs text-center text-gray-500 mt-4">
-            <i class="fas fa-shield-alt mr-1"></i>
-            Svi podaci su šifrovani i sigurni
-        </p>
+        </div>
+        <div id="downgradeContent" class="hidden">
+            <p class="mb-4">Downgrade na: <strong id="newPlanDowngrade"></strong></p>
+            <p class="text-sm text-gray-600 mb-4">Od sljedećeg mjeseca</p>
+            <button onclick="submitPlanChange()" class="w-full bg-yellow-500 text-white py-3 rounded-lg">
+                Zakaži Downgrade
+            </button>
+        </div>
+        <button onclick="closePlanChangeConfirm()" class="mt-3 w-full bg-gray-300 py-2 rounded-lg">
+            Otkaži
+        </button>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Chart.js - Prihodi Chart
-    const ctx1 = document.getElementById('prihodiChart');
-    if (ctx1) {
-        new Chart(ctx1, {
-            type: 'line',
-            data: {{ chart_data| safe }},
-    options: {
-        responsive: true,
-            maintainAspectRatio: false,
-                plugins: {
-            legend: { position: 'top' },
-            title: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
-        }
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Inicijalizacija...');
+    
+    const canvas = document.getElementById('prihodiChart');
+    if (!canvas) {
+        console.error('Canvas ne postoji');
+        return;
     }
-    });
-}
-
-    // Predictions Chart
-    {% if predictions %}
-    const ctx2 = document.getElementById('predictionsChart');
-    if (ctx2) {
-        new Chart(ctx2, {
-            type: 'bar',
-            data: {
-                labels: {{ pred_labels| safe }},
-    datasets: [{
-        label: 'Predviđeni prihod (KM)',
-        data: {{ pred_values| safe }},
-        backgroundColor: 'rgba(139, 92, 246, 0.6)',
-        borderColor: 'rgb(139, 92, 246)',
-        borderWidth: 2,
-        borderRadius: 8
-            }]
-        },
-    options: {
-        responsive: true,
-            maintainAspectRatio: false,
-                plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
-        }
+    
+    // Parse JSON data - SIGURNIJI NAČIN
+    const chartDataString = '{{ chart_data|escapejs }}';
+    let chartData;
+    
+    try {
+        chartData = JSON.parse(chartDataString);
+        console.log('Chart data parsed:', chartData);
+    } catch(e) {
+        console.error('JSON parse greška:', e);
+        console.log('Raw string:', chartDataString);
+        return;
     }
+    
+    if (!chartData.labels || chartData.labels.length === 0) {
+        canvas.parentElement.innerHTML = '<div class="text-center py-12 text-gray-500"><p>Nema podataka</p></div>';
+        return;
+    }
+    
+    new Chart(canvas, {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(val) {
+                            return val.toLocaleString() + ' KM';
+                        }
+                    }
+                }
+            }
+        }
     });
-}
-    {% endif %}
+    
+    console.log('✅ Chart OK!');
+});
 
-    // Plan Change Logic
-    let selectedPlanData = {
-        currentPlan: '{{ korisnik.plan }}',
-        currentPrice: {{ current_plan_price }},
-    newPlan: '',
-        newPrice: 0,
-            isUpgrade: false
+// Plan functions
+const selectedPlan = {
+    current: '{{ korisnik.plan }}',
+    currentPrice: {{ current_plan_price }},
+    new: '',
+    newPrice: 0
 };
 
-    const planPrices = {
-        'Starter': 15,
-        'Professional': 29,
-        'Business': 49,
-        'Enterprise': 99
-    };
+const planOrder = {Starter: 1, Professional: 2, Business: 3, Enterprise: 4};
 
-    const planOrder = {
-        'Starter': 1,
-        'Professional': 2,
-        'Business': 3,
-        'Enterprise': 4
-    };
+function openChangePlanDashboard() {
+    document.getElementById('changePlanDashboardModal').classList.remove('hidden');
+}
 
-    function openChangePlanDashboard() {
-        document.getElementById('changePlanDashboardModal').classList.remove('hidden');
-    }
+function closeChangePlanDashboard() {
+    document.getElementById('changePlanDashboardModal').classList.add('hidden');
+}
 
-    function closeChangePlanDashboard() {
-        document.getElementById('changePlanDashboardModal').classList.add('hidden');
-    }
+function closePlanChangeConfirm() {
+    document.getElementById('planChangeConfirmModal').classList.add('hidden');
+}
 
-    function closePlanChangeConfirm() {
-        document.getElementById('planChangeConfirmModal').classList.add('hidden');
-    }
-
-    function closeProratedPaymentModal() {
-        document.getElementById('proratedPaymentModal').classList.add('hidden');
-        document.getElementById('proratedPaymentForm').reset();
-    }
-
-    function selectPlanDashboard(planName, price) {
-        selectedPlanData.newPlan = planName;
-        selectedPlanData.newPrice = price;
-
-        const currentOrder = planOrder[selectedPlanData.currentPlan];
-        const newOrder = planOrder[planName];
-        selectedPlanData.isUpgrade = newOrder > currentOrder;
-
-        closeChangePlanDashboard();
-
-        if (selectedPlanData.isUpgrade) {
-            showUpgradeConfirmation();
-        } else {
-            showDowngradeConfirmation();
-        }
-
-        document.getElementById('planChangeConfirmModal').classList.remove('hidden');
-    }
-
-    function showUpgradeConfirmation() {
+function selectPlanDashboard(plan, price) {
+    selectedPlan.new = plan;
+    selectedPlan.newPrice = price;
+    
+    closeChangePlanDashboard();
+    
+    const isUpgrade = planOrder[plan] > planOrder[selectedPlan.current];
+    
+    if (isUpgrade) {
         document.getElementById('upgradeContent').classList.remove('hidden');
         document.getElementById('downgradeContent').classList.add('hidden');
-
-        document.getElementById('currentPlanUpgrade').textContent = selectedPlanData.currentPlan;
-        document.getElementById('newPlanUpgrade').textContent = selectedPlanData.newPlan;
-
-        // Calculate prorated amount
-        const trialEndDate = new Date('{{ korisnik.trial_end_date|date:"Y-m-d" }}');
-        const today = new Date();
-        const daysLeft = Math.max(0, Math.ceil((trialEndDate - today) / (1000 * 60 * 60 * 24)));
-        const totalDaysInPeriod = 30;
-
-        const priceDifference = selectedPlanData.newPrice - selectedPlanData.currentPrice;
-        const proratedPrice = (priceDifference * daysLeft / totalDaysInPeriod).toFixed(2);
-
-        document.getElementById('proratedAmount').textContent = proratedPrice + ' KM';
-        document.getElementById('proratedDetails').textContent =
-            `Razlika: ${priceDifference} KM × ${daysLeft} dana / 30 dana = ${proratedPrice} KM`;
-
-        // Next month date
-        const nextMonth = new Date(trialEndDate);
-        nextMonth.setDate(nextMonth.getDate() + 1);
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('nextMonthDate').textContent = nextMonth.toLocaleDateString('sr-RS', options);
-    }
-
-    function showDowngradeConfirmation() {
+        document.getElementById('newPlanUpgrade').textContent = plan;
+        
+        const days = {{ subscription_days_left }};
+        const diff = price - selectedPlan.currentPrice;
+        const prorated = (diff * days / 30).toFixed(2);
+        document.getElementById('proratedAmount').textContent = prorated;
+    } else {
         document.getElementById('downgradeContent').classList.remove('hidden');
         document.getElementById('upgradeContent').classList.add('hidden');
-
-        document.getElementById('currentPlanDowngrade').textContent = selectedPlanData.currentPlan;
-        document.getElementById('newPlanDowngrade').textContent = selectedPlanData.newPlan;
-
-        const trialEndDate = new Date('{{ korisnik.trial_end_date|date:"Y-m-d" }}');
-        const nextMonth = new Date(trialEndDate);
-        nextMonth.setDate(nextMonth.getDate() + 1);
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('downgradeDate').textContent = nextMonth.toLocaleDateString('sr-RS', options);
+        document.getElementById('newPlanDowngrade').textContent = plan;
     }
+    
+    document.getElementById('planChangeConfirmModal').classList.remove('hidden');
+}
 
-    async function submitPlanChange() {
-        const timing = selectedPlanData.isUpgrade ?
-            (document.querySelector('input[name="timing"]:checked')?.value || 'next_month') :
-            'next_month';
-
-        const submitBtn = event.target;
-        const originalText = submitBtn.innerHTML;
-
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Procesiranje...';
-
-        try {
-            const response = await fetch('{% url "change_plan" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    new_plan: selectedPlanData.newPlan,
-                    timing: timing
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                closePlanChangeConfirm();
-
-                if (data.requires_payment) {
-                    // Open payment modal for prorated charge
-                    openProratedPaymentModal(data.amount_to_charge, data.new_plan, data.prorated_details);
-                } else {
-                    alert(`✅ Plan promjena zakazana!\n\nNovi plan ${selectedPlanData.newPlan} počinje ${data.effective_date}`);
-                    window.location.reload();
-                }
-            } else {
-                alert('❌ Greška: ' + data.error);
-            }
-
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-
-        } catch (error) {
-            console.error('Error:', error);
-            alert('❌ Greška pri promjeni plana');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-    }
-
-    function openProratedPaymentModal(amount, newPlan, details) {
-        document.getElementById('prorated-amount').textContent = amount + ' KM';
-        document.getElementById('prorated-new-plan').textContent = newPlan;
-        document.getElementById('prorated-details-text').textContent = details;
-        document.getElementById('upgrade-plan-name').value = newPlan;
-        document.getElementById('upgrade-prorated-amount').value = amount;
-        document.getElementById('proratedPaymentModal').classList.remove('hidden');
-    }
-
-    // ESC key closes all modals
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
-            closeChangePlanDashboard();
+async function submitPlanChange() {
+    const isUpgrade = planOrder[selectedPlan.new] > planOrder[selectedPlan.current];
+    const timing = isUpgrade ? 
+        (document.querySelector('input[name="timing"]:checked')?.value || 'next_month') : 
+        'next_month';
+    
+    try {
+        const res = await fetch('{% url "change_plan" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                new_plan: selectedPlan.new,
+                timing: timing
+            })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
             closePlanChangeConfirm();
-            closeProratedPaymentModal();
+            alert(data.requires_payment ? 
+                `Plaćanje: ${data.amount_to_charge} KM` : 
+                `✅ Zakazano za ${data.effective_date}`
+            );
+            if (!data.requires_payment) location.reload();
+        } else {
+            alert('Greška: ' + data.error);
         }
-    });
+    } catch(err) {
+        alert('Greška');
+    }
+}
 
-    // Format card inputs
-    document.addEventListener('DOMContentLoaded', function () {
-        const proratedCardInput = document.querySelector('#proratedPaymentForm input[name="card_number"]');
-        if (proratedCardInput) {
-            proratedCardInput.addEventListener('input', function (e) {
-                let value = e.target.value.replace(/\s/g, '');
-                let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-                e.target.value = formattedValue;
-            });
-        }
-
-        const proratedExpiryInput = document.querySelector('#proratedPaymentForm input[name="expiry"]');
-        if (proratedExpiryInput) {
-            proratedExpiryInput.addEventListener('input', function (e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length >= 2) {
-                    e.target.value = value.slice(0, 2) + '/' + value.slice(2, 4);
-                } else {
-                    e.target.value = value;
-                }
-            });
-        }
-
-        const proratedCvvInput = document.querySelector('#proratedPaymentForm input[name="cvv"]');
-        if (proratedCvvInput) {
-            proratedCvvInput.addEventListener('input', function (e) {
-                e.target.value = e.target.value.replace(/\D/g, '');
-            });
-        }
-    });
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeChangePlanDashboard();
+        closePlanChangeConfirm();
+    }
+});
 </script>
-
-<style>
-    .dark-mode {
-        background-color: #1a202c;
-        color: #e2e8f0;
-    }
-
-    .dark-mode .bg-white {
-        background-color: #2d3748;
-    }
-
-    .dark-mode .text-gray-800 {
-        color: #e2e8f0;
-    }
-
-    .dark-mode .text-gray-600 {
-        color: #cbd5e0;
-    }
-</style>
 {% endblock %}

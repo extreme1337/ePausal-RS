@@ -24,6 +24,39 @@
             </a>
         </div>
 
+        <!-- Quick Period Filters -->
+        <div class="mb-4 flex items-center gap-2 flex-wrap">
+            <span class="text-sm font-medium text-gray-700 mr-2">Brzi filter:</span>
+
+            <!-- Ova godina (default) -->
+            <a href="{% url 'izvodi_pregled' %}"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition 
+               {% if od_datum == ova_godina_start and not do_datum %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                <i class="fas fa-calendar-check mr-1"></i>Ova godina
+            </a>
+
+            <!-- Ovaj mjesec -->
+            <a href="?od={{ trenutni_mjesec_start }}&do={{ trenutni_mjesec_end }}"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+               {% if od_datum == trenutni_mjesec_start and do_datum == trenutni_mjesec_end %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                <i class="fas fa-calendar mr-1"></i>Ovaj mjesec
+            </a>
+
+            <!-- Prošli mjesec -->
+            <a href="?od={{ prosli_mjesec_start }}&do={{ prosli_mjesec_end }}"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+               {% if od_datum == prosli_mjesec_start and do_datum == prosli_mjesec_end %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                <i class="fas fa-calendar-minus mr-1"></i>Prošli mjesec
+            </a>
+
+            <!-- Prošla godina -->
+            <a href="?od={{ prosla_godina_start }}&do={{ prosla_godina_end }}"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition
+               {% if od_datum == prosla_godina_start and do_datum == prosla_godina_end %}bg-blue-600 text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+                <i class="fas fa-history mr-1"></i>Prošla godina
+            </a>
+        </div>
+
         <!-- Filter -->
         <form method="get" class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div class="md:col-span-2">
@@ -49,6 +82,25 @@
                 </a>
             </div>
         </form>
+
+        <!-- Info o filteru -->
+        {% if od_datum and do_datum %}
+        <div class="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r">
+            <p class="text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-1"></i>
+                Prikazano:
+                {% if od_datum == do_datum|slice:":7"|add:"-01" and do_datum >= od_datum|slice:":7"|add:"-28" %}
+                <strong>Trenutni mjesec</strong> ({{ od_datum|date:"F Y" }})
+                {% else %}
+                <strong>{{ od_datum|date:"d.m.Y" }}</strong> - <strong>{{ do_datum|date:"d.m.Y" }}</strong>
+                {% endif %}
+                <a href="{% url 'izvodi_pregled' %}?per_page={{ per_page }}"
+                    class="ml-3 text-blue-600 hover:text-blue-800 underline">
+                    Prikaži sve
+                </a>
+            </p>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Statistika -->
